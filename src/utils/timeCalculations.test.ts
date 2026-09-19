@@ -1,5 +1,5 @@
 import { shift, workplace } from '@/__fixtures__/shifts';
-import { addDays, calculateWorkedMinutes, formatCurrency, formatDuration, findOverlappingShift, formatTime, generateTimesheetCSV, groupShiftsByMonthAndWeek, shiftEarnings, toLocalDateString, weekStartOf, changesPay } from './timeCalculations';
+import { addDays, calculateWorkedMinutes, formatCurrency, formatDuration, findOverlappingShift, formatTime, generateTimesheetCSV, groupShiftsByMonthAndWeek, shiftEarnings, toLocalDateString, weekStartOf, changesPay, shiftHourlyRate } from './timeCalculations';
 
 describe('calculateWorkedMinutes', () => {
   it('subtracts the break from a normal shift', () => {
@@ -184,5 +184,17 @@ describe('changesPay', () => {
 
   it('ignores floating point noise in the rate', () => {
     expect(changesPay(base, { ...base, hourlyRate: 20.000001 })).toBe(false);
+  });
+});
+
+describe('shiftHourlyRate', () => {
+  it('prefers the rate saved with the shift, then the workplace rate, then 0', () => {
+    expect(shiftHourlyRate(shift({ hourlyRate: 25 }), { hourlyRate: 20 })).toBe(25);
+    expect(shiftHourlyRate(shift({ hourlyRate: undefined }), { hourlyRate: 20 })).toBe(20);
+    expect(shiftHourlyRate(shift({ hourlyRate: undefined }), undefined)).toBe(0);
+  });
+
+  it('keeps a saved rate of 0 instead of falling back to the workplace rate', () => {
+    expect(shiftHourlyRate(shift({ hourlyRate: 0 }), { hourlyRate: 20 })).toBe(0);
   });
 });

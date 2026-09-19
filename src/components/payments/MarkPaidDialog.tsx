@@ -20,12 +20,27 @@ import { formatDate, shiftEarnings, toLocalDateString } from '@/utils/timeCalcul
 interface MarkPaidDialogProps {
   shift: Shift;
   workplace?: Workplace;
+  /** Heading; defaults to "Record Payment Received". */
+  title?: string;
+  /** Show "Workplace · date" under the heading. */
+  showShiftSubtitle?: boolean;
+  amountLabel?: string;
+  confirmLabel?: string;
   onClose: () => void;
   onSave: (paidDate: string, receivedAmount: number | undefined) => void;
 }
 
 /** Records when a shift was paid and how much arrived. Mount it fresh for each shift. */
-export function MarkPaidDialog({ shift, workplace, onClose, onSave }: MarkPaidDialogProps) {
+export function MarkPaidDialog({
+  shift,
+  workplace,
+  title = 'Record Payment Received',
+  showShiftSubtitle = true,
+  amountLabel = 'Actual Amount Received',
+  confirmLabel = 'Save Payment',
+  onClose,
+  onSave,
+}: MarkPaidDialogProps) {
   const theme = useTheme();
   const { money } = useFormat();
 
@@ -43,10 +58,12 @@ export function MarkPaidDialog({ shift, workplace, onClose, onSave }: MarkPaidDi
     <Dialog onClose={onClose}>
       <View style={styles.header}>
         <View style={styles.headerText}>
-          <Text style={[styles.title, { color: theme.text }]}>Record Payment Received</Text>
-          <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-            {workplace?.name} · {formatDate(shift.date, 'short')}
-          </Text>
+          <Text style={[styles.title, { color: theme.text }]}>{title}</Text>
+          {showShiftSubtitle ? (
+            <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+              {workplace?.name} · {formatDate(shift.date, 'short')}
+            </Text>
+          ) : null}
         </View>
         <Pressable accessibilityLabel="Close" onPress={onClose} hitSlop={8}>
           <X color={theme.textSecondary} size={16} />
@@ -63,7 +80,7 @@ export function MarkPaidDialog({ shift, workplace, onClose, onSave }: MarkPaidDi
       </FormField>
 
       <FormField
-        label="Actual Amount Received"
+        label={amountLabel}
         headerRight={
           <Text style={[styles.expected, { color: theme.textSecondary }]}>
             Expected: {money(expected)}
@@ -95,7 +112,7 @@ export function MarkPaidDialog({ shift, workplace, onClose, onSave }: MarkPaidDi
             (pressed || !isDateValid) && styles.pressed,
           ]}>
           <Text style={[styles.buttonText, styles.buttonStrong, { color: theme.onAccent }]}>
-            Save Payment
+            {confirmLabel}
           </Text>
         </Pressable>
       </View>

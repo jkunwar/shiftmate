@@ -67,8 +67,12 @@ export function formatDuration(totalMinutes: number): string {
  * workplace's rate is edited later.
  */
 export function shiftEarnings(shift: Shift, workplace?: Pick<Workplace, 'hourlyRate'> | null): number {
-  const rate = shift.hourlyRate ?? workplace?.hourlyRate ?? 0;
-  return (shift.workedMinutes / 60) * rate;
+  return (shift.workedMinutes / 60) * shiftHourlyRate(shift, workplace);
+}
+
+/** The rate a shift is paid at: its own saved rate, or else its workplace's current one. */
+export function shiftHourlyRate(shift: Shift, workplace?: Pick<Workplace, 'hourlyRate'> | null): number {
+  return shift.hourlyRate ?? workplace?.hourlyRate ?? 0;
 }
 
 /**
