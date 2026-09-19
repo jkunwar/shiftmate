@@ -9,18 +9,45 @@ import { Platform } from 'react-native';
 
 export const Colors = {
   light: {
-    text: '#000000',
-    background: '#ffffff',
-    backgroundElement: '#F0F0F3',
-    backgroundSelected: '#E0E1E6',
-    textSecondary: '#60646C',
+    text: '#0f1115',
+    background: '#F4F5F7',
+    backgroundElement: '#ECEEF2',
+    backgroundSelected: '#DFE2E8',
+    textSecondary: '#5B616B',
+    surface: '#ffffff',
+    border: '#DDE1E7',
+    accent: '#1a73e0',
+    accentPressed: '#1560bd',
+    accentSoft: '#E6F0FD',
+    onAccent: '#ffffff',
+    success: '#047857',
+    successSoft: '#D1FAE5',
+    danger: '#be123c',
+    dangerPressed: '#9f1239',
+    dangerSoft: '#FFE4E6',
+    warning: '#b45309',
+    warningSoft: '#FEF3C7',
   },
   dark: {
-    text: '#ffffff',
-    background: '#000000',
-    backgroundElement: '#212225',
-    backgroundSelected: '#2E3135',
-    textSecondary: '#B0B4BA',
+    text: '#F3F4F6',
+    background: '#0B0C0E',
+    backgroundElement: '#1B1D22',
+    backgroundSelected: '#2A2D34',
+    textSecondary: '#A3A9B3',
+    surface: '#15171B',
+    border: '#2A2D34',
+    accent: '#4DA3FF',
+    accentPressed: '#3B8FE8',
+    accentSoft: '#10294a',
+    // Dark text on the light-blue / green / red fills reads better than white does
+    onAccent: '#04121f',
+    success: '#34d399',
+    successSoft: '#06281f',
+    danger: '#fb7185',
+    dangerPressed: '#f43f5e',
+    dangerSoft: '#3d0f1a',
+    warning: '#fbbf24',
+    warningSoft: '#3a2606',
   },
 } as const;
 
@@ -61,5 +88,7 @@ export const Spacing = {
   six: 64,
 } as const;
 
-export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
+export const BottomTabInset = 80;
 export const MaxContentWidth = 800;
+/** How far the raised + button pokes above the top edge of the tab bar. */
+export const AddButtonRaise = 22;
