@@ -10,7 +10,7 @@ import { useRefreshControl } from '@/components/common/refresh-control';
 import { useTheme } from '@/hooks/use-theme';
 import { useToday } from '@/hooks/use-today';
 import { Shift, Workplace } from '@/types';
-import { getMonthRange, monthName } from '@/utils/dateRanges';
+import { getMonthRange } from '@/utils/dateRanges';
 
 interface WorkplacesScreenProps {
   workplaces: Workplace[];
@@ -34,7 +34,6 @@ export const WorkplacesScreen: React.FC<WorkplacesScreenProps> = ({
 
   const today = useToday();
   const { monthKey: currentMonthKey } = getMonthRange(today);
-  const currentMonthName = monthName(Number(currentMonthKey.slice(5)) - 1);
 
   return (
     <ScrollView
@@ -75,7 +74,6 @@ export const WorkplacesScreen: React.FC<WorkplacesScreenProps> = ({
               workplace={wp}
               shifts={shifts}
               currentMonthKey={currentMonthKey}
-              monthName={currentMonthName}
               onClick={() => onSelectWorkplace(wp.id)}
             />
           ))}

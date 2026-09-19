@@ -2,18 +2,17 @@ import { CheckCircle2, ChevronRight, Clock } from 'lucide-react-native';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { FontSize } from '@/constants/theme';
 import { useFormat } from '@/hooks/use-format';
 import { useTheme } from '@/hooks/use-theme';
 import { Shift, Workplace } from '@/types';
 import { formatDuration, shiftEarnings } from '@/utils/timeCalculations';
-import { FontSize } from '@/constants/theme';
 import { workplaceColor } from '@/utils/workplaceColor';
 
 interface WorkplaceCardProps {
   workplace: Workplace;
   shifts: Shift[];
-  currentMonthKey: string; // e.g. "2026-09"
-  monthName: string; // e.g. "September"
+  currentMonthKey: string;
   onClick: () => void;
 }
 
@@ -21,7 +20,6 @@ export const WorkplaceCard: React.FC<WorkplaceCardProps> = ({
   workplace,
   shifts,
   currentMonthKey,
-  monthName,
   onClick,
 }) => {
   const theme = useTheme();
@@ -61,7 +59,7 @@ export const WorkplaceCard: React.FC<WorkplaceCardProps> = ({
             <Text numberOfLines={1} style={[styles.name, { color: theme.text }]}>
               {workplace.name}
             </Text>
-            <Text style={[styles.month, { color: theme.textSecondary }]}>{monthName}</Text>
+            <Text style={[styles.month, { color: theme.textSecondary }]}>This month</Text>
           </View>
         </View>
         <ChevronRight color={theme.textSecondary} size={20} />

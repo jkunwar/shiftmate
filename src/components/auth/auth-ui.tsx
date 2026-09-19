@@ -1,4 +1,5 @@
-import React from 'react';
+import { Eye, EyeOff } from 'lucide-react-native';
+import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -12,20 +13,41 @@ import {
 import { useTheme } from '@/hooks/use-theme';
 import { FontSize } from '@/constants/theme';
 
-export function Field({ label, ...inputProps }: { label: string } & TextInputProps) {
+export function Field({ label, secureTextEntry, ...inputProps }: { label: string } & TextInputProps) {
   const theme = useTheme();
+  // Password fields get an eye to reveal what was typed; it starts hidden
+  const [revealed, setRevealed] = useState(false);
+  const isPassword = Boolean(secureTextEntry);
 
   return (
     <View style={styles.field}>
       <Text style={[styles.label, { color: theme.text }]}>{label}</Text>
-      <TextInput
-        placeholderTextColor={theme.textSecondary}
-        style={[
-          styles.input,
-          { backgroundColor: theme.surface, borderColor: theme.border, color: theme.text },
-        ]}
-        {...inputProps}
-      />
+      <View style={styles.inputWrap}>
+        <TextInput
+          placeholderTextColor={theme.textSecondary}
+          secureTextEntry={isPassword && !revealed}
+          style={[
+            styles.input,
+            { backgroundColor: theme.surface, borderColor: theme.border, color: theme.text },
+            isPassword && styles.inputWithToggle,
+          ]}
+          {...inputProps}
+        />
+        {isPassword ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={revealed ? 'Hide password' : 'Show password'}
+            onPress={() => setRevealed((shown) => !shown)}
+            hitSlop={8}
+            style={styles.toggle}>
+            {revealed ? (
+              <EyeOff color={theme.textSecondary} size={20} />
+            ) : (
+              <Eye color={theme.textSecondary} size={20} />
+            )}
+          </Pressable>
+        ) : null}
+      </View>
     </View>
   );
 }
@@ -91,6 +113,20 @@ const styles = StyleSheet.create({
     fontSize: FontSize.xs,
     fontWeight: '600',
     textTransform: 'uppercase',
+  },
+  inputWrap: {
+    justifyContent: 'center',
+  },
+  inputWithToggle: {
+    paddingRight: 44,
+  },
+  toggle: {
+    position: 'absolute',
+    right: 0,
+    height: '100%',
+    width: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   input: {
     paddingHorizontal: 14,
