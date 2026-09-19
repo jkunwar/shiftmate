@@ -20,6 +20,7 @@ import { getMonthRange } from '@/utils/dateRanges';
 import { hasPayPeriods, PayPeriodSetting } from '@/utils/payPeriods';
 import {
   DatePreset,
+  effectiveDatePreset,
   filterShifts,
   PaymentFilter,
   resolveDateRange,
@@ -55,7 +56,10 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({
   const today = useToday();
   const { message: toastMessage, showToast } = useToast();
 
-  const [datePreset, setDatePreset] = useState<DatePreset>('this-month');
+  // Until the user picks one, the default follows their settings (this pay period, else this week)
+  const [chosenPreset, setDatePreset] = useState<DatePreset | null>(null);
+  const payPeriodsAvailable = payPeriod ? hasPayPeriods(payPeriod) : false;
+  const datePreset = effectiveDatePreset(chosenPreset, payPeriodsAvailable);
   const [workplaceId, setWorkplaceId] = useState('all');
   const [payment, setPayment] = useState<PaymentFilter>('all');
   // The custom range starts as "this month so far"
@@ -134,7 +138,7 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({
             </View>
 
             <ReportFilters
-              showPayPeriods={payPeriod ? hasPayPeriods(payPeriod) : false}
+              showPayPeriods={payPeriodsAvailable}
               datePreset={datePreset}
               onDatePresetChange={setDatePreset}
               customStart={customStart}

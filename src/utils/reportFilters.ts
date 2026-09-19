@@ -18,6 +18,20 @@ export interface ReportRange extends DateRange {
   label: string;
 }
 
+/**
+ * The preset a report shows: the user's choice, or by default this pay period when pay periods are
+ * set up and this week when they are not. A pay-period choice is dropped if pay periods go away.
+ */
+export function effectiveDatePreset(
+  chosen: DatePreset | null,
+  payPeriodsAvailable: boolean,
+): DatePreset {
+  const fallback: DatePreset = payPeriodsAvailable ? 'this-pay-period' : 'this-week';
+  if (!chosen) return fallback;
+  if (!payPeriodsAvailable && chosen.endsWith('pay-period')) return fallback;
+  return chosen;
+}
+
 /** The date boundaries for a preset, relative to `today`. */
 export function resolveDateRange(
   preset: DatePreset,

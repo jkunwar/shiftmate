@@ -1,5 +1,5 @@
 import { shift, workplace } from '@/__fixtures__/shifts';
-import { filterShifts, resolveDateRange, summarizeShifts } from './reportFilters';
+import { effectiveDatePreset, filterShifts, resolveDateRange, summarizeShifts } from './reportFilters';
 
 const custom = { start: '2026-09-01', end: '2026-09-05' };
 const today = '2026-09-16'; // a Wednesday
@@ -116,5 +116,23 @@ describe('summarizeShifts', () => {
 
   it('is zero for no shifts', () => {
     expect(summarizeShifts([], [])).toEqual({ minutes: 0, earnings: 0 });
+  });
+});
+
+describe('effectiveDatePreset', () => {
+  it('defaults to this pay period when set up, else this week', () => {
+    expect(effectiveDatePreset(null, true)).toBe('this-pay-period');
+    expect(effectiveDatePreset(null, false)).toBe('this-week');
+  });
+
+  it('keeps whatever the user picked', () => {
+    expect(effectiveDatePreset('last-month', true)).toBe('last-month');
+    expect(effectiveDatePreset('custom', false)).toBe('custom');
+    expect(effectiveDatePreset('last-pay-period', true)).toBe('last-pay-period');
+  });
+
+  it('drops a pay-period choice once pay periods are no longer set up', () => {
+    expect(effectiveDatePreset('this-pay-period', false)).toBe('this-week');
+    expect(effectiveDatePreset('last-pay-period', false)).toBe('this-week');
   });
 });
