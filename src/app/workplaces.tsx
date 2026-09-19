@@ -1,3 +1,4 @@
+import { LoadingSkeleton } from '@/components/common/LoadingSkeleton';
 import { WorkplaceWorkLogScreen } from '@/components/screens/WorkplaceWorkLogScreen';
 import { WorkplacesScreen } from '@/components/screens/WorkplacesScreen';
 import { ThemedView } from '@/components/themed-view';
@@ -15,13 +16,19 @@ export default function WorkplacesRoute() {
     openAddShift,
     openAddWorkplace,
     openEditWorkplace,
+    supabaseUser,
+    syncNow,
+    isInitialLoading,
   } = useAppState();
+  const onRefresh = supabaseUser ? syncNow : undefined;
 
   const activeWorkplace = workplaces.find((w) => w.id === activeWorkplaceId);
 
   return (
     <ThemedView style={{ flex: 1 }}>
-      {activeWorkplace ? (
+      {isInitialLoading ? (
+        <LoadingSkeleton type="workplaces" />
+      ) : activeWorkplace ? (
         <WorkplaceWorkLogScreen
           // Reset month, view mode and collapsed weeks when switching workplaces
           key={activeWorkplace.id}
@@ -32,6 +39,7 @@ export default function WorkplacesRoute() {
           onSelectShift={openShiftDetails}
           onDeleteWorkplace={deleteWorkplace}
           onEditWorkplace={openEditWorkplace}
+          onRefresh={onRefresh}
           weekStartsOn={preferences.weekStartsOn}
         />
       ) : (
@@ -40,6 +48,7 @@ export default function WorkplacesRoute() {
           shifts={shifts}
           onSelectWorkplace={setActiveWorkplaceId}
           onAddWorkplace={openAddWorkplace}
+          onRefresh={onRefresh}
         />
       )}
     </ThemedView>

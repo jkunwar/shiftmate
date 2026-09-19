@@ -7,6 +7,7 @@ import {
   Alert,
   Platform,
   Pressable,
+  FlatList,
   ScrollView,
   Share,
   StyleSheet,
@@ -20,6 +21,9 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { ShiftRow } from '@/components/shifts/ShiftRow';
 import { BottomTabInset } from '@/constants/theme';
 import { useFormat } from '@/hooks/use-format';
+import { Chip } from '@/components/common/Chip';
+import { ListSeparator } from '@/components/common/list-separator';
+import { useRefreshControl } from '@/components/common/refresh-control';
 import { useTheme } from '@/hooks/use-theme';
 import { useToday } from '@/hooks/use-today';
 import { Shift, User, Workplace } from '@/types';
@@ -36,6 +40,8 @@ interface ReportsScreenProps {
   onSelectShift: (shift: Shift) => void;
   /** Which day weeks start on in the shared summary and the PDF. Defaults to Monday. */
   weekStartsOn?: 'monday' | 'sunday';
+  /** Pull-to-refresh handler (syncs with the cloud). Omit to turn the gesture off. */
+  onRefresh?: () => Promise<void>;
 }
 
 type DatePreset = 'this-week' | 'last-week' | 'this-month' | 'last-month' | 'custom';
@@ -54,35 +60,6 @@ const PAYMENT_FILTERS: { key: PaymentFilter; label: string }[] = [
   { key: 'unpaid', label: 'Unpaid Only' },
   { key: 'paid', label: 'Paid Only' },
 ];
-
-function Chip({
-  label,
-  selected,
-  onPress,
-}: {
-  label: string;
-  selected: boolean;
-  onPress: () => void;
-}) {
-  const theme = useTheme();
-
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ selected }}
-      onPress={onPress}
-      style={[
-        styles.chip,
-        selected
-          ? { backgroundColor: theme.accent, borderColor: theme.accent }
-          : { backgroundColor: theme.surface, borderColor: theme.border },
-      ]}>
-      <Text style={[styles.chipText, { color: selected ? theme.onAccent : theme.textSecondary }]}>
-        {label}
-      </Text>
-    </Pressable>
-  );
-}
 
 /** ": <reason>" for a toast, or nothing when the error has no useful message. */
 const errorDetail = (error: unknown): string => {
@@ -115,10 +92,10 @@ const askExportAction = (label: string) =>
     );
   });
 
-const isCancelled = (error: unknown) =>
-  error instanceof Error && /cancel/i.test(error.message);
+const isCancelled = (error: unknown) => error instanceof Error && /cancel/i.test(error.message);
 
 export const ReportsScreen: React.FC<ReportsScreenProps> = ({
+  onRefresh,
   user,
   workplaces,
   shifts,
@@ -126,6 +103,7 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({
   weekStartsOn = 'monday',
 }) => {
   const theme = useTheme();
+  const refreshControl = useRefreshControl(onRefresh);
   const { money, time } = useFormat();
   const insets = useSafeAreaInsets();
 
@@ -190,7 +168,12 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({
 
   const totalEarnings = useMemo(() => {
     return filteredShifts.reduce(
-      (acc, s) => acc + shiftEarnings(s, workplaces.find((w) => w.id === s.workplaceId)),
+      (acc, s) =>
+        acc +
+        shiftEarnings(
+          s,
+          workplaces.find((w) => w.id === s.workplaceId),
+        ),
       0,
     );
   }, [filteredShifts, workplaces]);
@@ -323,218 +306,237 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({
 
   return (
     <View style={styles.flex}>
-      <ScrollView
+      <FlatList
+        data={filteredShifts}
+        keyExtractor={(shift) => shift.id}
+        refreshControl={refreshControl}
+        ItemSeparatorComponent={ListSeparator}
         contentContainerStyle={[
           styles.content,
           { paddingTop: insets.top + 8, paddingBottom: BottomTabInset + insets.bottom + 16 },
-        ]}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerText}>
-            <Text style={[styles.heading, { color: theme.text }]}>Reports & Timesheets</Text>
-            <Text style={[styles.subheading, { color: theme.textSecondary }]}>
-              Generate and export employer-ready timesheets
+        ]}
+        ListHeaderComponent={
+          <View style={styles.headerBlock}>
+            {/* Header */}
+            <View style={styles.header}>
+              <View style={styles.headerText}>
+                <Text style={[styles.heading, { color: theme.text }]}>Reports & Timesheets</Text>
+                <Text style={[styles.subheading, { color: theme.textSecondary }]}>
+                  Generate and export employer-ready timesheets
+                </Text>
+              </View>
+
+              <Pressable
+                accessibilityLabel="Timesheet preview"
+                onPress={() => setShowFullTimesheet(true)}
+                style={({ pressed }) => [
+                  styles.previewButton,
+                  {
+                    backgroundColor: pressed ? theme.backgroundElement : theme.surface,
+                    borderColor: theme.border,
+                  },
+                ]}
+              >
+                <FileText color={theme.accent} size={20} />
+              </Pressable>
+            </View>
+
+            {/* Quick date presets */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.chipRow}
+            >
+              {DATE_PRESETS.map((item) => (
+                <Chip
+                  key={item.key}
+                  label={item.label}
+                  selected={datePreset === item.key}
+                  onPress={() => setDatePreset(item.key)}
+                />
+              ))}
+            </ScrollView>
+
+            {/* Custom date range */}
+            {datePreset === 'custom' ? (
+              <View
+                style={[
+                  styles.customRange,
+                  { backgroundColor: theme.backgroundElement, borderColor: theme.border },
+                ]}
+              >
+                <View style={styles.flex}>
+                  <Text style={[styles.filterLabel, { color: theme.textSecondary }]}>
+                    Start Date
+                  </Text>
+                  <DateField
+                    compact
+                    value={customStart}
+                    onChange={setCustomStart}
+                    accessibilityLabel="Start date"
+                  />
+                </View>
+                <View style={styles.flex}>
+                  <Text style={[styles.filterLabel, { color: theme.textSecondary }]}>End Date</Text>
+                  <DateField
+                    compact
+                    value={customEnd}
+                    onChange={setCustomEnd}
+                    accessibilityLabel="End date"
+                  />
+                </View>
+              </View>
+            ) : null}
+
+            {/* Workplace & payment status filters */}
+            <View style={styles.filter}>
+              <Text style={[styles.filterLabel, { color: theme.textSecondary }]}>Workplace</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.chipRow}
+              >
+                <Chip
+                  label="All Workplaces"
+                  selected={selectedWpId === 'all'}
+                  onPress={() => setSelectedWpId('all')}
+                />
+                {workplaces.map((wp) => (
+                  <Chip
+                    key={wp.id}
+                    label={wp.name}
+                    selected={selectedWpId === wp.id}
+                    onPress={() => setSelectedWpId(wp.id)}
+                  />
+                ))}
+              </ScrollView>
+            </View>
+
+            <View style={styles.filter}>
+              <Text style={[styles.filterLabel, { color: theme.textSecondary }]}>
+                Payment Status
+              </Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.chipRow}
+              >
+                {PAYMENT_FILTERS.map((item) => (
+                  <Chip
+                    key={item.key}
+                    label={item.label}
+                    selected={paymentFilter === item.key}
+                    onPress={() => setPaymentFilter(item.key)}
+                  />
+                ))}
+              </ScrollView>
+            </View>
+
+            {/* Report preview hero card */}
+            <View
+              style={[styles.hero, { backgroundColor: theme.surface, borderColor: theme.border }]}
+            >
+              <View style={styles.heroHeader}>
+                <View style={styles.headerText}>
+                  <Text style={[styles.eyebrow, { color: theme.textSecondary }]}>
+                    Report Preview
+                  </Text>
+                  <Text numberOfLines={1} style={[styles.heroTitle, { color: theme.text }]}>
+                    {activeWorkplace ? activeWorkplace.name : 'All Workplaces'}
+                  </Text>
+                  <Text style={[styles.subheading, { color: theme.textSecondary }]}>
+                    {dateRange.label}
+                  </Text>
+                </View>
+
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => setShowFullTimesheet(true)}
+                  style={styles.fullForm}
+                >
+                  <Text style={[styles.fullFormText, { color: theme.accent }]}>Full Form</Text>
+                  <ExternalLink color={theme.accent} size={14} />
+                </Pressable>
+              </View>
+
+              {/* 3 metric stats */}
+              <View style={[styles.metrics, { borderColor: theme.border }]}>
+                <View style={styles.flex}>
+                  <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>
+                    Total Hours
+                  </Text>
+                  <Text style={[styles.metricValue, { color: theme.text }]}>
+                    {formatDuration(totalMinutes)}
+                  </Text>
+                </View>
+                <View style={styles.flex}>
+                  <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Shifts</Text>
+                  <Text style={[styles.metricValue, { color: theme.text }]}>
+                    {filteredShifts.length}
+                  </Text>
+                </View>
+                <View style={styles.flex}>
+                  <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>
+                    Est. Earnings
+                  </Text>
+                  <Text style={[styles.metricValue, { color: theme.success }]}>
+                    {money(totalEarnings)}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Actions: share, preview timesheet, export CSV */}
+              <View style={styles.actions}>
+                <Pressable accessibilityRole="button" onPress={handleShare} style={secondaryButton}>
+                  <Share2 color={theme.text} size={14} />
+                  <Text style={[styles.actionText, { color: theme.text }]}>Share</Text>
+                </Pressable>
+
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={handleExportPDF}
+                  style={({ pressed }) => [
+                    styles.actionButton,
+                    {
+                      backgroundColor: pressed ? theme.accentPressed : theme.accent,
+                      borderColor: 'transparent',
+                    },
+                  ]}
+                >
+                  <Printer color={theme.onAccent} size={14} />
+                  <Text style={[styles.actionText, { color: theme.onAccent }]}>Export PDF</Text>
+                </Pressable>
+
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={handleExportCSV}
+                  style={secondaryButton}
+                >
+                  <Download color={theme.text} size={14} />
+                  <Text style={[styles.actionText, { color: theme.text }]}>Export CSV</Text>
+                </Pressable>
+              </View>
+            </View>
+            <Text style={[styles.eyebrow, { color: theme.textSecondary }]}>
+              Included Shifts ({filteredShifts.length})
             </Text>
           </View>
-
-          <Pressable
-            accessibilityLabel="Timesheet preview"
-            onPress={() => setShowFullTimesheet(true)}
-            style={({ pressed }) => [
-              styles.previewButton,
-              {
-                backgroundColor: pressed ? theme.backgroundElement : theme.surface,
-                borderColor: theme.border,
-              },
-            ]}>
-            <FileText color={theme.accent} size={20} />
-          </Pressable>
-        </View>
-
-        {/* Quick date presets */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.chipRow}>
-          {DATE_PRESETS.map((item) => (
-            <Chip
-              key={item.key}
-              label={item.label}
-              selected={datePreset === item.key}
-              onPress={() => setDatePreset(item.key)}
-            />
-          ))}
-        </ScrollView>
-
-        {/* Custom date range */}
-        {datePreset === 'custom' ? (
-          <View
-            style={[
-              styles.customRange,
-              { backgroundColor: theme.backgroundElement, borderColor: theme.border },
-            ]}>
-            <View style={styles.flex}>
-              <Text style={[styles.filterLabel, { color: theme.textSecondary }]}>Start Date</Text>
-              <DateField
-                compact
-                value={customStart}
-                onChange={setCustomStart}
-                accessibilityLabel="Start date"
-              />
-            </View>
-            <View style={styles.flex}>
-              <Text style={[styles.filterLabel, { color: theme.textSecondary }]}>End Date</Text>
-              <DateField
-                compact
-                value={customEnd}
-                onChange={setCustomEnd}
-                accessibilityLabel="End date"
-              />
-            </View>
-          </View>
-        ) : null}
-
-        {/* Workplace & payment status filters */}
-        <View style={styles.filter}>
-          <Text style={[styles.filterLabel, { color: theme.textSecondary }]}>Workplace</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.chipRow}>
-            <Chip
-              label="All Workplaces"
-              selected={selectedWpId === 'all'}
-              onPress={() => setSelectedWpId('all')}
-            />
-            {workplaces.map((wp) => (
-              <Chip
-                key={wp.id}
-                label={wp.name}
-                selected={selectedWpId === wp.id}
-                onPress={() => setSelectedWpId(wp.id)}
-              />
-            ))}
-          </ScrollView>
-        </View>
-
-        <View style={styles.filter}>
-          <Text style={[styles.filterLabel, { color: theme.textSecondary }]}>Payment Status</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.chipRow}>
-            {PAYMENT_FILTERS.map((item) => (
-              <Chip
-                key={item.key}
-                label={item.label}
-                selected={paymentFilter === item.key}
-                onPress={() => setPaymentFilter(item.key)}
-              />
-            ))}
-          </ScrollView>
-        </View>
-
-        {/* Report preview hero card */}
-        <View style={[styles.hero, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-          <View style={styles.heroHeader}>
-            <View style={styles.headerText}>
-              <Text style={[styles.eyebrow, { color: theme.textSecondary }]}>Report Preview</Text>
-              <Text numberOfLines={1} style={[styles.heroTitle, { color: theme.text }]}>
-                {activeWorkplace ? activeWorkplace.name : 'All Workplaces'}
-              </Text>
-              <Text style={[styles.subheading, { color: theme.textSecondary }]}>
-                {dateRange.label}
-              </Text>
-            </View>
-
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => setShowFullTimesheet(true)}
-              style={styles.fullForm}>
-              <Text style={[styles.fullFormText, { color: theme.accent }]}>Full Form</Text>
-              <ExternalLink color={theme.accent} size={14} />
-            </Pressable>
-          </View>
-
-          {/* 3 metric stats */}
-          <View style={[styles.metrics, { borderColor: theme.border }]}>
-            <View style={styles.flex}>
-              <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Total Hours</Text>
-              <Text style={[styles.metricValue, { color: theme.text }]}>
-                {formatDuration(totalMinutes)}
-              </Text>
-            </View>
-            <View style={styles.flex}>
-              <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Shifts</Text>
-              <Text style={[styles.metricValue, { color: theme.text }]}>
-                {filteredShifts.length}
-              </Text>
-            </View>
-            <View style={styles.flex}>
-              <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Est. Earnings</Text>
-              <Text style={[styles.metricValue, { color: theme.success }]}>
-                {money(totalEarnings)}
-              </Text>
-            </View>
-          </View>
-
-          {/* Actions: share, preview timesheet, export CSV */}
-          <View style={styles.actions}>
-            <Pressable accessibilityRole="button" onPress={handleShare} style={secondaryButton}>
-              <Share2 color={theme.text} size={14} />
-              <Text style={[styles.actionText, { color: theme.text }]}>Share</Text>
-            </Pressable>
-
-            <Pressable
-              accessibilityRole="button"
-              onPress={handleExportPDF}
-              style={({ pressed }) => [
-                styles.actionButton,
-                {
-                  backgroundColor: pressed ? theme.accentPressed : theme.accent,
-                  borderColor: 'transparent',
-                },
-              ]}>
-              <Printer color={theme.onAccent} size={14} />
-              <Text style={[styles.actionText, { color: theme.onAccent }]}>Export PDF</Text>
-            </Pressable>
-
-            <Pressable accessibilityRole="button" onPress={handleExportCSV} style={secondaryButton}>
-              <Download color={theme.text} size={14} />
-              <Text style={[styles.actionText, { color: theme.text }]}>Export CSV</Text>
-            </Pressable>
-          </View>
-        </View>
-
-        {/* Shifts breakdown in report */}
-        <View style={styles.shifts}>
-          <Text style={[styles.eyebrow, { color: theme.textSecondary }]}>
-            Included Shifts ({filteredShifts.length})
-          </Text>
-
-          {filteredShifts.length === 0 ? (
-            <EmptyState
-              type="reports"
-              description="No shifts match the selected filters or date range."
-            />
-          ) : (
-            <View style={styles.shiftList}>
-              {filteredShifts.map((shift) => {
-                const wp = workplaces.find((w) => w.id === shift.workplaceId);
-                return (
-                  <ShiftRow
-                    key={shift.id}
-                    shift={shift}
-                    workplace={wp}
-                    showWorkplace={selectedWpId === 'all'}
-                    onClick={() => onSelectShift(shift)}
-                  />
-                );
-              })}
-            </View>
-          )}
-        </View>
-      </ScrollView>
+        }
+        ListEmptyComponent={
+          <EmptyState
+            type="reports"
+            description="No shifts match the selected filters or date range."
+          />
+        }
+        renderItem={({ item: shift }) => (
+          <ShiftRow
+            shift={shift}
+            workplace={workplaces.find((w) => w.id === shift.workplaceId)}
+            showWorkplace={selectedWpId === 'all'}
+            onClick={() => onSelectShift(shift)}
+          />
+        )}
+      />
 
       {/* Toast notification */}
       {toastMessage ? (
@@ -568,7 +570,6 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 16,
-    gap: 16,
   },
   header: {
     flexDirection: 'row',
@@ -594,16 +595,6 @@ const styles = StyleSheet.create({
   chipRow: {
     flexDirection: 'row',
     gap: 6,
-  },
-  chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
-    borderWidth: 1,
-  },
-  chipText: {
-    fontSize: 12,
-    fontWeight: '600',
   },
   customRange: {
     flexDirection: 'row',
@@ -686,11 +677,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
-  shifts: {
-    gap: 8,
-  },
-  shiftList: {
-    gap: 8,
+  headerBlock: {
+    gap: 16,
+    marginBottom: 8,
   },
   toastWrap: {
     position: 'absolute',

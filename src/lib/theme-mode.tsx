@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useState, useSyncExternalStore } from 'react';
 import { Platform, useColorScheme as useSystemColorScheme } from 'react-native';
 
 import { readStored, STORAGE_KEYS } from '@/lib/storage';
@@ -14,6 +14,9 @@ interface ThemeModeValue {
 
 const ThemeModeContext = createContext<ThemeModeValue | null>(null);
 
+// Nothing to subscribe to: only the difference between server and client snapshots is used
+const subscribeNever = () => () => {};
+
 /**
  * Owns the app's light/dark choice. It reads the saved preference straight from storage so the
  * sign-in screens (which render before the app state exists) already use the right theme.
@@ -27,8 +30,11 @@ export function ThemeModeProvider({ children }: { children: React.ReactNode }) {
 
   // Static web rendering happens without storage or a device setting, so start light there
   // and switch after hydration to avoid a mismatch.
-  const [hydrated, setHydrated] = useState(Platform.OS !== 'web');
-  useEffect(() => setHydrated(true), []);
+  const hydrated = useSyncExternalStore(
+    subscribeNever,
+    () => true, // in the browser and on devices
+    () => Platform.OS !== 'web', // while rendering on the server
+  );
 
   const dark = override === null ? system === 'dark' : override;
   const scheme: Scheme = hydrated && dark ? 'dark' : 'light';

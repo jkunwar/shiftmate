@@ -20,6 +20,8 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { ShiftRow } from '@/components/shifts/ShiftRow';
 import { BottomTabInset } from '@/constants/theme';
 import { useFormat } from '@/hooks/use-format';
+import { SegmentedControl } from '@/components/common/SegmentedControl';
+import { useRefreshControl } from '@/components/common/refresh-control';
 import { useTheme } from '@/hooks/use-theme';
 import { useToday } from '@/hooks/use-today';
 import { Shift, Workplace } from '@/types';
@@ -37,6 +39,8 @@ interface WorkplaceWorkLogScreenProps {
   onEditWorkplace?: (workplace: Workplace) => void;
   /** Which day weeks start on when grouping shifts. Defaults to Monday. */
   weekStartsOn?: 'monday' | 'sunday';
+  /** Pull-to-refresh handler (syncs with the cloud). Omit to turn the gesture off. */
+  onRefresh?: () => Promise<void>;
 }
 
 function monthLabelFor(monthKey: string): string {
@@ -45,6 +49,7 @@ function monthLabelFor(monthKey: string): string {
 }
 
 export const WorkplaceWorkLogScreen: React.FC<WorkplaceWorkLogScreenProps> = ({
+  onRefresh,
   workplace,
   shifts,
   onBack,
@@ -55,6 +60,7 @@ export const WorkplaceWorkLogScreen: React.FC<WorkplaceWorkLogScreenProps> = ({
   weekStartsOn = 'monday',
 }) => {
   const theme = useTheme();
+  const refreshControl = useRefreshControl(onRefresh);
   const { money } = useFormat();
   const insets = useSafeAreaInsets();
 
@@ -113,6 +119,7 @@ export const WorkplaceWorkLogScreen: React.FC<WorkplaceWorkLogScreenProps> = ({
   return (
     <>
       <ScrollView
+        refreshControl={refreshControl}
         contentContainerStyle={[
           styles.content,
           { paddingTop: insets.top + 8, paddingBottom: BottomTabInset + insets.bottom + 16 },
@@ -129,34 +136,14 @@ export const WorkplaceWorkLogScreen: React.FC<WorkplaceWorkLogScreenProps> = ({
           </Pressable>
 
           {/* View mode toggle: log vs calendar */}
-          <View style={[styles.segmented, { backgroundColor: theme.backgroundElement }]}>
-            {(
-              [
-                ['log', 'Work Log', ListFilter],
-                ['calendar', 'Calendar', CalendarIcon],
-              ] as const
-            ).map(([mode, label, Icon]) => {
-              const selected = viewMode === mode;
-              return (
-                <Pressable
-                  key={mode}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected }}
-                  onPress={() => setViewMode(mode)}
-                  style={[styles.segment, selected && { backgroundColor: theme.surface }]}>
-                  <Icon color={selected ? theme.text : theme.textSecondary} size={14} />
-                  <Text
-                    style={[
-                      styles.segmentText,
-                      { color: selected ? theme.text : theme.textSecondary },
-                      selected && styles.segmentTextSelected,
-                    ]}>
-                    {label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
+          <SegmentedControl
+            options={[
+              { value: 'log', label: 'Work Log', icon: ListFilter },
+              { value: 'calendar', label: 'Calendar', icon: CalendarIcon },
+            ]}
+            value={viewMode}
+            onChange={setViewMode}
+          />
         </View>
 
         {/* Workplace summary hero card */}
@@ -399,26 +386,6 @@ const styles = StyleSheet.create({
   },
   backText: {
     fontSize: 12,
-    fontWeight: '600',
-  },
-  segmented: {
-    flexDirection: 'row',
-    padding: 4,
-    borderRadius: 12,
-  },
-  segment: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  segmentText: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  segmentTextSelected: {
     fontWeight: '600',
   },
   hero: {

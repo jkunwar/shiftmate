@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { SyncBanner } from '@/components/sync-banner';
+import { UndoSnackbar } from '@/components/undo-snackbar';
 import { ThemedText } from '@/components/themed-text';
 import { AddButtonRaise, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -24,7 +25,7 @@ function TabButton({ label, icon, isFocused, ...props }: TabButtonProps) {
   return (
     <Pressable {...props} style={({ pressed }) => [styles.tabButton, pressed && styles.pressed]}>
       <SymbolView tintColor={color} name={icon} size={24} />
-      <ThemedText type="small" style={{ color }}>
+      <ThemedText type="small" maxFontSizeMultiplier={1.2} style={{ color }}>
         {label}
       </ThemedText>
     </Pressable>
@@ -106,6 +107,7 @@ export default function AppTabs() {
         </TabList>
       </Tabs>
     <AddButton bottom={insets.bottom + BAR_HEIGHT - ADD_BUTTON_SIZE + AddButtonRaise} />
+      <UndoSnackbar bottom={insets.bottom + BAR_HEIGHT + AddButtonRaise + 12} />
     </View>
   );
 }

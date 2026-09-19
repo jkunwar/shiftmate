@@ -19,10 +19,11 @@ const isExpoGoAndroid =
 /** False on web and in Expo Go on Android; reminders then do nothing. */
 export const remindersSupported = Platform.OS !== 'web' && !isExpoGoAndroid;
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const Notifications: typeof NotificationsModule | null = remindersSupported
-  ? require('expo-notifications')
-  : null;
+let Notifications: typeof NotificationsModule | null = null;
+if (remindersSupported) {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  Notifications = require('expo-notifications');
+}
 
 if (Notifications) {
   // Show reminders as a banner even while the app is open

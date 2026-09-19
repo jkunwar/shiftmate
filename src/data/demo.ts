@@ -1,4 +1,4 @@
-import { PayPeriod, Shift, User, UserPreferences, Workplace } from '@/types';
+import { Shift, User, UserPreferences, Workplace } from '@/types';
 import { calculateWorkedMinutes, toLocalDateString } from '@/utils/timeCalculations';
 
 /** A date `n` days before today, so the demo data is always recent. */
@@ -63,4 +63,3 @@ export const demoShifts: Shift[] = [
   shift('s8', 'wp-cafe', daysAgo(42), '16:00', '21:00', 0, true),
 ];
 
-export const demoPayPeriods: PayPeriod[] = [];

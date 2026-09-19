@@ -106,11 +106,15 @@ export function applyOps(data: SyncData, ops: SyncOp[]): SyncData {
 }
 
 /**
- * True for errors a retry can never fix (bad data, deleted parent row). Those operations are dropped
+ * True for errors a retry can never fix (bad data, a deleted parent row, a row-level-security
+ * rejection such as a shift pointing at someone else's workplace). Those operations are dropped
  * so one bad change doesn't block the queue. Everything else (no connection, expired token,
  * missing column, server hiccups) is retried, keeping the data safe until it can be sent.
  */
 export function isPermanentError(error: unknown): boolean {
   const code = (error as { code?: unknown } | null)?.code;
-  return typeof code === 'string' && (code.startsWith('22') || code.startsWith('23'));
+  return (
+    typeof code === 'string' &&
+    (code.startsWith('22') || code.startsWith('23') || code === '42501')
+  );
 }

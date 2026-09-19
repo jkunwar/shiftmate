@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ShiftRow } from '@/components/shifts/ShiftRow';
 import { BottomTabInset } from '@/constants/theme';
 import { useFormat } from '@/hooks/use-format';
+import { useRefreshControl } from '@/components/common/refresh-control';
 import { useTheme } from '@/hooks/use-theme';
 import { useToday } from '@/hooks/use-today';
 import { Shift, User, Workplace } from '@/types';
@@ -23,6 +24,8 @@ interface HomeScreenProps {
   onAddShift: () => void;
   /** Which day the "This Week" card starts on. Defaults to Monday. */
   weekStartsOn?: 'monday' | 'sunday';
+  /** Pull-to-refresh handler (syncs with the cloud). Omit to turn the gesture off. */
+  onRefresh?: () => Promise<void>;
 }
 
 // The "This Week" card is dark in both light and dark mode, as in the original design
@@ -39,6 +42,7 @@ const WEEK_CARD = {
 const UNPAID_BUTTON = { base: '#b45309', pressed: '#92400e' };
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({
+  onRefresh,
   user,
   workplaces,
   shifts,
@@ -49,6 +53,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   weekStartsOn = 'monday',
 }) => {
   const theme = useTheme();
+  const refreshControl = useRefreshControl(onRefresh);
   const { money } = useFormat();
   const insets = useSafeAreaInsets();
 
@@ -106,6 +111,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
   return (
     <ScrollView
+        refreshControl={refreshControl}
       contentContainerStyle={[
         styles.content,
         { paddingTop: insets.top + 8, paddingBottom: BottomTabInset + insets.bottom + 16 },

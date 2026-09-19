@@ -1,5 +1,6 @@
 import { useRouter } from 'expo-router';
 
+import { LoadingSkeleton } from '@/components/common/LoadingSkeleton';
 import { HomeScreen } from '@/components/screens/HomeScreen';
 import { PaymentTrackingScreen } from '@/components/screens/PaymentTrackingScreen';
 import { ThemedView } from '@/components/themed-view';
@@ -18,18 +19,24 @@ export default function HomeRoute() {
     setShowPaymentTracking,
     openShiftDetails,
     openAddShift,
+    supabaseUser,
+    syncNow,
+    isInitialLoading,
   } = useAppState();
+  const onRefresh = supabaseUser ? syncNow : undefined;
 
   return (
     <ThemedView style={{ flex: 1 }}>
-      {showPaymentTracking ? (
+      {isInitialLoading ? (
+        <LoadingSkeleton type="home" />
+      ) : showPaymentTracking ? (
         <PaymentTrackingScreen
           workplaces={workplaces}
           shifts={shifts}
-          payPeriods={[]}
           onBack={() => setShowPaymentTracking(false)}
           onUpdateShiftStatus={setPaymentStatus}
           onSelectShift={openShiftDetails}
+          onRefresh={onRefresh}
         />
       ) : (
         <HomeScreen
@@ -48,6 +55,7 @@ export default function HomeRoute() {
           onSelectShift={openShiftDetails}
           onAddShift={() => openAddShift()}
           weekStartsOn={preferences.weekStartsOn}
+          onRefresh={onRefresh}
         />
       )}
     </ThemedView>

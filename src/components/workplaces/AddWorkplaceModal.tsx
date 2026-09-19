@@ -1,16 +1,7 @@
+import { BottomSheet } from '@/components/common/BottomSheet';
 import { AlertCircle, X } from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import React, { useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { TimeField } from '@/components/common/DateTimeFields';
@@ -41,8 +32,7 @@ const defaultSchedule: UsualScheduleDay[] = [
 const PRESET_COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#06B6D4'];
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
 
-export const AddWorkplaceModal: React.FC<AddWorkplaceModalProps> = ({
-  isOpen,
+const AddWorkplaceForm: React.FC<Omit<AddWorkplaceModalProps, 'isOpen'>> = ({
   onClose,
   onSave,
   defaultHourlyRate,
@@ -52,37 +42,22 @@ export const AddWorkplaceModal: React.FC<AddWorkplaceModalProps> = ({
   const { currency } = useFormat();
   const insets = useSafeAreaInsets();
 
-  const [name, setName] = useState('');
-  const [address, setAddress] = useState('');
-  const [hourlyRate, setHourlyRate] = useState('');
-  const [notes, setNotes] = useState('');
-  const [color, setColor] = useState(PRESET_COLORS[0]);
-  const [schedule, setSchedule] = useState<UsualScheduleDay[]>(defaultSchedule);
-  const [errorMsg, setErrorMsg] = useState('');
-
-  // Fill the form every time the modal opens: the workplace being edited, or blank defaults
-  useEffect(() => {
-    if (isOpen) {
-      if (initialWorkplace) {
-        setName(initialWorkplace.name);
-        setAddress(initialWorkplace.address ?? '');
-        setHourlyRate(initialWorkplace.hourlyRate ? initialWorkplace.hourlyRate.toFixed(2) : '');
-        setNotes(initialWorkplace.notes ?? '');
-        setColor(initialWorkplace.color ?? PRESET_COLORS[0]);
-        setSchedule(initialWorkplace.usualSchedule ?? defaultSchedule);
-      } else {
-        setName('');
-        setAddress('');
-        setHourlyRate(defaultHourlyRate ? defaultHourlyRate.toFixed(2) : '');
-        setNotes('');
-        setColor(PRESET_COLORS[0]);
-        setSchedule(defaultSchedule);
-      }
-      setErrorMsg('');
+  // The form is mounted fresh each time the modal opens, so its state starts from the workplace
+  // being edited, or from blank defaults
+  const [name, setName] = useState(initialWorkplace?.name ?? '');
+  const [address, setAddress] = useState(initialWorkplace?.address ?? '');
+  const [hourlyRate, setHourlyRate] = useState(() => {
+    if (initialWorkplace) {
+      return initialWorkplace.hourlyRate ? initialWorkplace.hourlyRate.toFixed(2) : '';
     }
-  }, [isOpen, initialWorkplace, defaultHourlyRate]);
-
-  if (!isOpen) return null;
+    return defaultHourlyRate ? defaultHourlyRate.toFixed(2) : '';
+  });
+  const [notes, setNotes] = useState(initialWorkplace?.notes ?? '');
+  const [color, setColor] = useState(initialWorkplace?.color ?? PRESET_COLORS[0]);
+  const [schedule, setSchedule] = useState<UsualScheduleDay[]>(
+    initialWorkplace?.usualSchedule ?? defaultSchedule,
+  );
+  const [errorMsg, setErrorMsg] = useState('');
 
   const toggleDayActive = (index: number) => {
     setSchedule((prev) =>
@@ -137,253 +112,225 @@ export const AddWorkplaceModal: React.FC<AddWorkplaceModalProps> = ({
   };
 
   return (
-    <Modal
-      visible
-      transparent
-      animationType="slide"
-      statusBarTranslucent
-      onRequestClose={onClose}>
-      <KeyboardAvoidingView behavior="padding" style={styles.flex}>
-        <View style={styles.backdrop}>
-          {/* Tapping outside the sheet closes it. It is a sibling rather than a parent of the sheet so it never competes with scrolling inside. */}
-          <Pressable accessible={false} style={StyleSheet.absoluteFill} onPress={onClose} />
-          <View style={[styles.sheet, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-            {/* Header */}
-            <View style={[styles.header, { borderBottomColor: theme.border }]}>
-              <View>
-                <Text style={[styles.title, { color: theme.text }]}>
-                  {initialWorkplace ? 'Edit Workplace' : 'Add Workplace'}
-                </Text>
-                <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-                  Organize hours and custom hourly rates
-                </Text>
-              </View>
-              <Pressable
-                accessibilityLabel="Close"
-                onPress={onClose}
-                hitSlop={8}
-                style={({ pressed }) => [
-                  styles.closeButton,
-                  pressed && { backgroundColor: theme.backgroundElement },
-                ]}>
-                <X color={theme.textSecondary} size={20} />
-              </Pressable>
-            </View>
+    <BottomSheet onClose={onClose}>
+      {/* Header */}
+      <View style={[styles.header, { borderBottomColor: theme.border }]}>
+        <View>
+          <Text style={[styles.title, { color: theme.text }]}>
+            {initialWorkplace ? 'Edit Workplace' : 'Add Workplace'}
+          </Text>
+          <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+            Organize hours and custom hourly rates
+          </Text>
+        </View>
+        <Pressable
+          accessibilityLabel="Close"
+          onPress={onClose}
+          hitSlop={8}
+          style={({ pressed }) => [
+            styles.closeButton,
+            pressed && { backgroundColor: theme.backgroundElement },
+          ]}>
+          <X color={theme.textSecondary} size={20} />
+        </Pressable>
+      </View>
 
-            {/* Form body */}
-            <ScrollView
-              keyboardShouldPersistTaps="handled"
-              contentContainerStyle={[styles.body, { paddingBottom: 20 + insets.bottom }]}>
-              {errorMsg ? (
-                <View
-                  style={[
-                    styles.banner,
-                    { backgroundColor: theme.dangerSoft, borderColor: `${theme.danger}55` },
-                  ]}>
-                  <AlertCircle color={theme.danger} size={16} />
-                  <Text style={[styles.bannerText, { color: theme.danger }]}>{errorMsg}</Text>
-                </View>
-              ) : null}
+      {/* Form body */}
+      <ScrollView
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={[styles.body, { paddingBottom: 20 + insets.bottom }]}>
+        {errorMsg ? (
+          <View
+            style={[
+              styles.banner,
+              { backgroundColor: theme.dangerSoft, borderColor: `${theme.danger}55` },
+            ]}>
+            <AlertCircle color={theme.danger} size={16} />
+            <Text style={[styles.bannerText, { color: theme.danger }]}>{errorMsg}</Text>
+          </View>
+        ) : null}
 
-              {/* Workplace name */}
-              <View style={styles.field}>
-                <Text style={[styles.label, { color: theme.text }]}>Workplace Name *</Text>
-                <TextInput
-                  value={name}
-                  onChangeText={(text) => {
-                    setName(text);
-                    setErrorMsg('');
-                  }}
-                  placeholder="e.g. XYZ Restaurant, Coffee House, Library"
-                  placeholderTextColor={theme.textSecondary}
-                  style={[styles.input, inputStyle]}
-                />
-              </View>
+        {/* Workplace name */}
+        <View style={styles.field}>
+          <Text style={[styles.label, { color: theme.text }]}>Workplace Name *</Text>
+          <TextInput
+            value={name}
+            onChangeText={(text) => {
+              setName(text);
+              setErrorMsg('');
+            }}
+            placeholder="e.g. XYZ Restaurant, Coffee House, Library"
+            placeholderTextColor={theme.textSecondary}
+            style={[styles.input, inputStyle]}
+          />
+        </View>
 
-              {/* Hourly rate */}
-              <View style={styles.field}>
-                <Text style={[styles.label, { color: theme.text }]}>Hourly Rate ({currency})</Text>
-                <View style={styles.amountWrap}>
-                  <Text style={[styles.currency, { color: theme.textSecondary }]}>{currency}</Text>
-                  <TextInput
-                    value={hourlyRate}
-                    onChangeText={setHourlyRate}
-                    placeholder="18.00"
-                    placeholderTextColor={theme.textSecondary}
-                    keyboardType="decimal-pad"
-                    style={[styles.input, styles.amountInput, inputStyle]}
-                  />
-                </View>
-              </View>
-
-              {/* Colour badge */}
-              <View style={styles.field}>
-                <Text style={[styles.label, { color: theme.text }]}>Color Badge</Text>
-                <View style={styles.swatches}>
-                  {PRESET_COLORS.map((c) => {
-                    const selected = color === c;
-                    return (
-                      <Pressable
-                        key={c}
-                        accessibilityRole="button"
-                        accessibilityLabel={`Color ${c}`}
-                        accessibilityState={{ selected }}
-                        onPress={() => setColor(c)}
-                        style={[
-                          styles.swatch,
-                          { backgroundColor: c },
-                          selected
-                            ? { borderColor: theme.text, transform: [{ scale: 1.15 }] }
-                            : styles.swatchIdle,
-                        ]}
-                      />
-                    );
-                  })}
-                </View>
-              </View>
-
-              {/* Address */}
-              <View style={styles.field}>
-                <Text style={[styles.label, { color: theme.text }]}>Address (Optional)</Text>
-                <TextInput
-                  value={address}
-                  onChangeText={setAddress}
-                  placeholder="e.g. 142 Market St, Suite 200"
-                  placeholderTextColor={theme.textSecondary}
-                  style={[styles.input, inputStyle]}
-                />
-              </View>
-
-              {/* Notes */}
-              <View style={styles.field}>
-                <Text style={[styles.label, { color: theme.text }]}>Notes (Optional)</Text>
-                <TextInput
-                  value={notes}
-                  onChangeText={setNotes}
-                  placeholder="e.g. Manager contact, locker number, dress code"
-                  placeholderTextColor={theme.textSecondary}
-                  style={[styles.input, inputStyle]}
-                />
-              </View>
-
-              {/* Usual schedule (template / convenience) */}
-              <View style={styles.field}>
-                <View>
-                  <Text style={[styles.label, { color: theme.text }]}>Usual Schedule (Template)</Text>
-                  <Text style={[styles.hint, { color: theme.textSecondary }]}>
-                    Pre-fills shift times for fast logging
-                  </Text>
-                </View>
-
-                <View
-                  style={[
-                    styles.scheduleCard,
-                    { backgroundColor: theme.backgroundElement, borderColor: theme.border },
-                  ]}>
-                  {schedule.map((item, idx) => (
-                    <View key={item.dayOfWeek} style={styles.dayRow}>
-                      <View style={styles.dayName}>
-                        <Switch
-                          value={item.active}
-                          onValueChange={() => toggleDayActive(idx)}
-                          trackColor={{ false: theme.backgroundSelected, true: theme.accent }}
-                          thumbColor="#ffffff"
-                        />
-                        <Text
-                          numberOfLines={1}
-                          style={[
-                            styles.dayText,
-                            { color: item.active ? theme.text : theme.textSecondary },
-                          ]}>
-                          {item.dayName}
-                        </Text>
-                      </View>
-
-                      {item.active ? (
-                        <View style={styles.times}>
-                          <View style={styles.timeField}>
-                            <TimeField
-                              compact
-                              value={item.startTime}
-                              onChange={(time) => updateDayTime(idx, 'startTime', time)}
-                              accessibilityLabel={`${item.dayName} start time`}
-                            />
-                          </View>
-                          <Text style={{ color: theme.textSecondary }}>–</Text>
-                          <View style={styles.timeField}>
-                            <TimeField
-                              compact
-                              value={item.endTime}
-                              onChange={(time) => updateDayTime(idx, 'endTime', time)}
-                              accessibilityLabel={`${item.dayName} end time`}
-                            />
-                          </View>
-                        </View>
-                      ) : (
-                        <Text style={[styles.off, { color: theme.textSecondary }]}>Off</Text>
-                      )}
-                    </View>
-                  ))}
-                </View>
-              </View>
-
-              {/* Buttons */}
-              <View style={styles.buttons}>
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={onClose}
-                  style={({ pressed }) => [
-                    styles.button,
-                    styles.flex,
-                    {
-                      backgroundColor: pressed ? theme.backgroundElement : 'transparent',
-                      borderColor: theme.border,
-                    },
-                  ]}>
-                  <Text style={[styles.buttonText, { color: theme.text }]}>Cancel</Text>
-                </Pressable>
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={handleSubmit}
-                  style={({ pressed }) => [
-                    styles.button,
-                    styles.flex,
-                    {
-                      backgroundColor: pressed ? theme.accentPressed : theme.accent,
-                      borderColor: 'transparent',
-                    },
-                  ]}>
-                  <Text style={[styles.buttonText, styles.saveText, { color: theme.onAccent }]}>
-                    {initialWorkplace ? 'Save Changes' : 'Save Workplace'}
-                  </Text>
-                </Pressable>
-              </View>
-            </ScrollView>
+        {/* Hourly rate */}
+        <View style={styles.field}>
+          <Text style={[styles.label, { color: theme.text }]}>Hourly Rate ({currency})</Text>
+          <View style={styles.amountWrap}>
+            <Text style={[styles.currency, { color: theme.textSecondary }]}>{currency}</Text>
+            <TextInput
+              value={hourlyRate}
+              onChangeText={setHourlyRate}
+              placeholder="18.00"
+              placeholderTextColor={theme.textSecondary}
+              keyboardType="decimal-pad"
+              style={[styles.input, styles.amountInput, inputStyle]}
+            />
           </View>
         </View>
-      </KeyboardAvoidingView>
-    </Modal>
+
+        {/* Colour badge */}
+        <View style={styles.field}>
+          <Text style={[styles.label, { color: theme.text }]}>Color Badge</Text>
+          <View style={styles.swatches}>
+            {PRESET_COLORS.map((c) => {
+              const selected = color === c;
+              return (
+                <Pressable
+                  key={c}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Color ${c}`}
+                  accessibilityState={{ selected }}
+                  onPress={() => setColor(c)}
+                  style={[
+                    styles.swatch,
+                    { backgroundColor: c },
+                    selected
+                      ? { borderColor: theme.text, transform: [{ scale: 1.15 }] }
+                      : styles.swatchIdle,
+                  ]}
+                />
+              );
+            })}
+          </View>
+        </View>
+
+        {/* Address */}
+        <View style={styles.field}>
+          <Text style={[styles.label, { color: theme.text }]}>Address (Optional)</Text>
+          <TextInput
+            value={address}
+            onChangeText={setAddress}
+            placeholder="e.g. 142 Market St, Suite 200"
+            placeholderTextColor={theme.textSecondary}
+            style={[styles.input, inputStyle]}
+          />
+        </View>
+
+        {/* Notes */}
+        <View style={styles.field}>
+          <Text style={[styles.label, { color: theme.text }]}>Notes (Optional)</Text>
+          <TextInput
+            value={notes}
+            onChangeText={setNotes}
+            placeholder="e.g. Manager contact, locker number, dress code"
+            placeholderTextColor={theme.textSecondary}
+            style={[styles.input, inputStyle]}
+          />
+        </View>
+
+        {/* Usual schedule (template / convenience) */}
+        <View style={styles.field}>
+          <View>
+            <Text style={[styles.label, { color: theme.text }]}>Usual Schedule (Template)</Text>
+            <Text style={[styles.hint, { color: theme.textSecondary }]}>
+              Pre-fills shift times for fast logging
+            </Text>
+          </View>
+
+          <View
+            style={[
+              styles.scheduleCard,
+              { backgroundColor: theme.backgroundElement, borderColor: theme.border },
+            ]}>
+            {schedule.map((item, idx) => (
+              <View key={item.dayOfWeek} style={styles.dayRow}>
+                <View style={styles.dayName}>
+                  <Switch
+                    value={item.active}
+                    onValueChange={() => toggleDayActive(idx)}
+                    trackColor={{ false: theme.backgroundSelected, true: theme.accent }}
+                    thumbColor="#ffffff"
+                  />
+                  <Text
+                    numberOfLines={1}
+                    style={[
+                      styles.dayText,
+                      { color: item.active ? theme.text : theme.textSecondary },
+                    ]}>
+                    {item.dayName}
+                  </Text>
+                </View>
+
+                {item.active ? (
+                  <View style={styles.times}>
+                    <View style={styles.timeField}>
+                      <TimeField
+                        compact
+                        value={item.startTime}
+                        onChange={(time) => updateDayTime(idx, 'startTime', time)}
+                        accessibilityLabel={`${item.dayName} start time`}
+                      />
+                    </View>
+                    <Text style={{ color: theme.textSecondary }}>–</Text>
+                    <View style={styles.timeField}>
+                      <TimeField
+                        compact
+                        value={item.endTime}
+                        onChange={(time) => updateDayTime(idx, 'endTime', time)}
+                        accessibilityLabel={`${item.dayName} end time`}
+                      />
+                    </View>
+                  </View>
+                ) : (
+                  <Text style={[styles.off, { color: theme.textSecondary }]}>Off</Text>
+                )}
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {/* Buttons */}
+        <View style={styles.buttons}>
+          <Pressable
+            accessibilityRole="button"
+            onPress={onClose}
+            style={({ pressed }) => [
+              styles.button,
+              styles.flex,
+              {
+                backgroundColor: pressed ? theme.backgroundElement : 'transparent',
+                borderColor: theme.border,
+              },
+            ]}>
+            <Text style={[styles.buttonText, { color: theme.text }]}>Cancel</Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            onPress={handleSubmit}
+            style={({ pressed }) => [
+              styles.button,
+              styles.flex,
+              {
+                backgroundColor: pressed ? theme.accentPressed : theme.accent,
+                borderColor: 'transparent',
+              },
+            ]}>
+            <Text style={[styles.buttonText, styles.saveText, { color: theme.onAccent }]}>
+              {initialWorkplace ? 'Save Changes' : 'Save Workplace'}
+            </Text>
+          </Pressable>
+        </View>
+      </ScrollView>
+    </BottomSheet>
   );
 };
 
 const styles = StyleSheet.create({
   flex: {
     flex: 1,
-  },
-  backdrop: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  sheet: {
-    width: '100%',
-    maxWidth: 512,
-    maxHeight: '92%',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    borderWidth: 1,
-    overflow: 'hidden',
   },
   header: {
     flexDirection: 'row',
@@ -527,3 +474,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+
+export const AddWorkplaceModal: React.FC<AddWorkplaceModalProps> = ({ isOpen, ...props }) =>
+  isOpen ? <AddWorkplaceForm {...props} /> : null;

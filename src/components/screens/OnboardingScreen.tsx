@@ -188,7 +188,7 @@ export const OnboardingScreen: React.FC = () => {
             <Clock color={theme.onAccent} size={20} strokeWidth={2.5} />
           </View>
           <View>
-            <Text style={[styles.brandName, { color: theme.text }]}>Work Hours Tracker</Text>
+            <Text style={[styles.brandName, { color: theme.text }]}>ShiftMate</Text>
             <Text style={[styles.tagline, { color: theme.textSecondary }]}>
               Simple. Fast. Accurate.
             </Text>

@@ -1,0 +1,58 @@
+import { type ErrorBoundaryProps } from 'expo-router';
+import { useEffect } from 'react';
+import { Pressable, StyleSheet, Text, useColorScheme, View } from 'react-native';
+
+import { Colors, Spacing } from '@/constants/theme';
+import { reportError } from '@/lib/error-reporting';
+
+/**
+ * Shown instead of a white screen when a render error escapes. It renders above the app's providers,
+ * so it reads the device colour scheme directly instead of the theme hooks.
+ */
+export function ErrorFallback({ error, retry }: ErrorBoundaryProps) {
+  const palette = Colors[useColorScheme() === 'dark' ? 'dark' : 'light'];
+
+  useEffect(() => {
+    reportError(error, 'render');
+  }, [error]);
+
+  return (
+    <View style={[styles.container, { backgroundColor: palette.background }]}>
+      <Text style={[styles.title, { color: palette.text }]}>Something went wrong</Text>
+      <Text style={[styles.body, { color: palette.textSecondary }]}>
+        ShiftMate hit an unexpected problem. Your shifts are safe. Try again, and restart the app if
+        it keeps happening.
+      </Text>
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => void retry()}
+        style={({ pressed }) => [
+          styles.button,
+          { backgroundColor: palette.accent },
+          pressed && styles.pressed,
+        ]}>
+        <Text style={[styles.buttonLabel, { color: palette.onAccent }]}>Try again</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: Spacing.four,
+    gap: Spacing.three,
+  },
+  title: { fontSize: 22, fontWeight: '700', textAlign: 'center' },
+  body: { fontSize: 15, lineHeight: 22, textAlign: 'center' },
+  button: {
+    marginTop: Spacing.two,
+    paddingHorizontal: Spacing.four,
+    paddingVertical: Spacing.three,
+    borderRadius: 12,
+  },
+  buttonLabel: { fontSize: 16, fontWeight: '600' },
+  pressed: { opacity: 0.7 },
+});

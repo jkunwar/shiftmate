@@ -1,38 +1,20 @@
-import NetInfo from '@react-native-community/netinfo';
 import type { User as SupabaseAuthUser } from '@supabase/supabase-js';
 import { randomUUID } from 'expo-crypto';
-import React, {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
-import { Appearance, AppState } from 'react-native';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { Appearance } from 'react-native';
 
-import {
-  demoPayPeriods,
-  demoPreferences,
-  demoShifts,
-  demoUser,
-  demoWorkplaces,
-} from '@/data/demo';
+import { demoPreferences, demoShifts, demoUser, demoWorkplaces } from '@/data/demo';
 import { useAuth } from '@/lib/auth';
 import { readStored, STORAGE_KEYS, writeStored } from '@/lib/storage';
-import { applyReminderPlan, buildReminderPlan } from '@/lib/notifications';
+import { useModalState, type ShiftEditorState, type WorkplaceEditorState } from '@/lib/state/use-modal-state';
+import { useReminders } from '@/lib/state/use-reminders';
+import { useSyncEngine } from '@/lib/state/use-sync-engine';
+import { useUndo, type UndoState } from '@/lib/state/use-undo';
 import { useThemeMode } from '@/lib/theme-mode';
 import { supabaseDb } from '@/lib/supabase';
-import { applyOps, enqueueOp, isPermanentError, type SyncOp, type SyncOpBody } from '@/lib/sync';
-import {
-  PayPeriod,
-  PaymentStatus,
-  Shift,
-  User,
-  UserPreferences,
-  Workplace,
-} from '@/types';
+import { PaymentStatus, Shift, User, UserPreferences, Workplace } from '@/types';
 import { toLocalDateString } from '@/utils/timeCalculations';
+
 
 interface AppStateValue {
   // Data
@@ -40,7 +22,6 @@ interface AppStateValue {
   preferences: UserPreferences;
   workplaces: Workplace[];
   shifts: Shift[];
-  payPeriods: PayPeriod[];
 
   // Supabase
   supabaseUser: SupabaseAuthUser | null;
@@ -50,6 +31,8 @@ interface AppStateValue {
   /** Changes made on this device that haven't reached Supabase yet. */
   pendingChanges: number;
   syncNow: () => Promise<void>;
+  /** True while signed in, before the first load from the cloud, with nothing cached to show yet. */
+  isInitialLoading: boolean;
   signOutSupabase: () => Promise<void>;
   /** Permanently deletes the account and its data, then signs out. Resolves with an error message on failure. */
   deleteAccountData: () => Promise<string | null>;
@@ -71,6 +54,10 @@ interface AppStateValue {
   ) => Promise<void>;
   resetDemoData: () => void;
 
+  /** The last delete, which can be undone for a few seconds. */
+  undo: UndoState | null;
+  dismissUndo: () => void;
+
   // Drill-down state for tab screens: which workplace's work log is open on the Workplaces tab,
   // and whether Payment Tracking is open on the Home tab.
   activeWorkplaceId: string | null;
@@ -82,11 +69,11 @@ interface AppStateValue {
   selectedShift: Shift | null;
   openShiftDetails: (shift: Shift) => void;
   closeShiftDetails: () => void;
-  shiftEditor: { isOpen: boolean; workplaceId?: string; shift: Shift | null };
+  shiftEditor: ShiftEditorState;
   openAddShift: (workplaceId?: string) => void;
   openEditShift: (shift: Shift) => void;
   closeShiftEditor: () => void;
-  workplaceEditor: { isOpen: boolean; workplace: Workplace | null };
+  workplaceEditor: WorkplaceEditorState;
   openAddWorkplace: () => void;
   openEditWorkplace: (workplace: Workplace) => void;
   closeWorkplaceEditor: () => void;
@@ -103,35 +90,6 @@ const nameFromSession = (sessionUser: SupabaseAuthUser) =>
   sessionUser.user_metadata?.name ||
   sessionUser.email?.split('@')[0] ||
   'User';
-
-/** Sends one queued change to Supabase. 'retry' leaves it queued; 'done' removes it (sent or hopeless). */
-async function runOp(userId: string, op: SyncOp): Promise<'done' | 'retry'> {
-  try {
-    switch (op.type) {
-      case 'upsert_workplace':
-        await supabaseDb.upsertWorkplace(userId, op.workplace);
-        break;
-      case 'delete_workplace':
-        await supabaseDb.deleteWorkplace(op.workplaceId);
-        break;
-      case 'upsert_shift':
-        await supabaseDb.upsertShift(userId, op.shift);
-        break;
-      case 'delete_shift':
-        await supabaseDb.deleteShift(op.shiftId);
-        break;
-    }
-    return 'done';
-  } catch (err) {
-    if (isPermanentError(err)) {
-      console.warn('Dropping a change Supabase rejected:', op.type, err);
-      return 'done';
-    }
-    return 'retry';
-  }
-}
-
-const RETRY_DELAY_MS = 20_000;
 
 export function AppStateProvider({ children }: { children: React.ReactNode }) {
   const { isConfigured, user: supabaseUser, signOut } = useAuth();
@@ -157,47 +115,19 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   const [shifts, setShifts] = useState<Shift[]>(() =>
     readStored(STORAGE_KEYS.shifts, cloudMode ? [] : demoShifts),
   );
-  const [payPeriods, setPayPeriods] = useState<PayPeriod[]>(() =>
-    readStored(STORAGE_KEYS.payPeriods, demoPayPeriods),
-  );
 
-  // Offline-first sync
   const supabaseUserId = supabaseUser?.id;
-  const [ops, setOps] = useState<SyncOp[]>(() => {
-    if (!supabaseUserId) return [];
-    const saved = readStored<{ userId: string; ops: SyncOp[] } | null>(STORAGE_KEYS.outbox, null);
-    return saved && saved.userId === supabaseUserId ? saved.ops : [];
-  });
-  const opsRef = useRef(ops); // always the latest queue, for async code that outlives a render
-  const [isOnline, setIsOnline] = useState(true);
-  const onlineRef = useRef(true);
-  const [isSyncing, setIsSyncing] = useState(false);
-  const flushingRef = useRef(false);
-  const pullingRef = useRef(false);
-  const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const syncNowRef = useRef<() => Promise<void>>(async () => {});
+  const { undo, showUndo, dismissUndo } = useUndo();
+  const modals = useModalState();
+  const { setActiveWorkplaceId, setShowPaymentTracking } = modals;
 
-  // Navigation drill-downs and modals
-  const [activeWorkplaceId, setActiveWorkplaceId] = useState<string | null>(null);
-  const [showPaymentTracking, setShowPaymentTracking] = useState(false);
-  const [selectedShift, setSelectedShift] = useState<Shift | null>(null);
-  const [shiftEditor, setShiftEditor] = useState<AppStateValue['shiftEditor']>({
-    isOpen: false,
-    shift: null,
-  });
-  const [workplaceEditor, setWorkplaceEditor] = useState<AppStateValue['workplaceEditor']>({
-    isOpen: false,
-    workplace: null,
-  });
+  const sync = useSyncEngine({ userId: supabaseUserId, setWorkplaces, setShifts });
+  const { enqueue } = sync;
 
   // ---- Persistence to local storage --------------------------------------------------------
   useEffect(() => writeStored(STORAGE_KEYS.user, user), [user]);
   useEffect(() => writeStored(STORAGE_KEYS.workplaces, workplaces), [workplaces]);
   useEffect(() => writeStored(STORAGE_KEYS.shifts, shifts), [shifts]);
-  useEffect(() => writeStored(STORAGE_KEYS.payPeriods, payPeriods), [payPeriods]);
-  useEffect(() => {
-    if (supabaseUserId) writeStored(STORAGE_KEYS.outbox, { userId: supabaseUserId, ops });
-  }, [ops, supabaseUserId]);
 
   // The dark-mode preference drives the app's colour scheme
   useEffect(() => {
@@ -211,137 +141,30 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     }
   }, [preferences, setDarkMode]);
 
-  // ---- Reminders ---------------------------------------------------------------------------
-  // The plan is reduced to a string so the effect only reruns when the reminders actually change
-  const reminderPlan = JSON.stringify(
-    buildReminderPlan({
-      preferences,
-      workplaces,
-      hasUnpaidShifts: shifts.some((s) => s.paymentStatus === 'unpaid'),
-    }),
-  );
-
-  useEffect(() => {
-    const plan = JSON.parse(reminderPlan);
-    void applyReminderPlan(plan);
-
-    // Picks up permission that was granted in the system settings while the app was closed
-    const appStateSub = AppState.addEventListener('change', (state) => {
-      if (state === 'active') void applyReminderPlan(plan);
-    });
-    return () => appStateSub.remove();
-  }, [reminderPlan]);
+  useReminders(preferences, workplaces, shifts);
 
   // ---- Supabase cloud data & offline sync ---------------------------------------------------
   const supabaseUserName = supabaseUser ? nameFromSession(supabaseUser) : undefined;
   const supabaseUserEmail = supabaseUser?.email;
 
-  // Mirror the signed-in account into the local profile
-  useEffect(() => {
-    if (!supabaseUserId) return;
-    setUser((prev) => ({
-      ...prev,
-      id: supabaseUserId,
-      name: supabaseUserName ?? prev.name,
-      email: supabaseUserEmail || prev.email,
-    }));
-  }, [supabaseUserId, supabaseUserName, supabaseUserEmail]);
-
-  const commitOps = useCallback((next: SyncOp[]) => {
-    opsRef.current = next;
-    setOps(next);
-  }, []);
-
-  /** Sends queued changes in order until the queue is empty or one can't be sent yet. */
-  const flush = useCallback(async () => {
-    const userId = supabaseUserId;
-    // A pull in progress applies the queue itself; it flushes again when it finishes
-    if (!userId || flushingRef.current || pullingRef.current) return;
-
-    flushingRef.current = true;
-    setIsSyncing(true);
-    if (retryTimer.current) clearTimeout(retryTimer.current);
-
-    let complete = true;
-    try {
-      while (opsRef.current.length > 0) {
-        const op = opsRef.current[0];
-        if ((await runOp(userId, op)) === 'retry') {
-          complete = false;
-          break;
-        }
-        commitOps(opsRef.current.filter((o) => o.id !== op.id));
-      }
-    } finally {
-      flushingRef.current = false;
-      setIsSyncing(false);
+  // Mirror the signed-in account into the local profile. Done while rendering (React's "adjust state
+  // when inputs change" pattern) instead of in an effect, so there's no extra render pass.
+  const profileKey = supabaseUserId
+    ? `${supabaseUserId}|${supabaseUserName}|${supabaseUserEmail}`
+    : null;
+  const [appliedProfileKey, setAppliedProfileKey] = useState<string | null>(null);
+  if (profileKey !== appliedProfileKey) {
+    setAppliedProfileKey(profileKey);
+    if (supabaseUserId) {
+      setUser((prev) => ({
+        ...prev,
+        id: supabaseUserId,
+        name: supabaseUserName ?? prev.name,
+        email: supabaseUserEmail || prev.email,
+      }));
     }
+  }
 
-    if (!complete) {
-      retryTimer.current = setTimeout(() => void syncNowRef.current(), RETRY_DELAY_MS);
-    }
-  }, [supabaseUserId, commitOps]);
-
-  /** Sends pending changes, then refreshes from the cloud with any still-pending changes applied on top. */
-  const syncNow = useCallback(async () => {
-    const userId = supabaseUserId;
-    if (!userId) return;
-
-    await flush();
-
-    pullingRef.current = true;
-    setIsSyncing(true);
-    try {
-      const [cloudWorkplaces, cloudShifts] = await Promise.all([
-        supabaseDb.fetchWorkplaces(userId),
-        supabaseDb.fetchShifts(userId),
-      ]);
-      const merged = applyOps(
-        { workplaces: cloudWorkplaces, shifts: cloudShifts },
-        opsRef.current,
-      );
-      setWorkplaces(merged.workplaces);
-      setShifts(merged.shifts);
-    } catch (err) {
-      // Offline or unreachable: keep working from the local copy
-      console.warn('Could not refresh from Supabase:', err);
-    } finally {
-      pullingRef.current = false;
-      setIsSyncing(false);
-    }
-
-    if (opsRef.current.length > 0) void flush();
-  }, [supabaseUserId, flush]);
-
-  useEffect(() => {
-    syncNowRef.current = syncNow;
-  }, [syncNow]);
-
-  // Sync on sign-in, when the connection returns, and when the app comes back to the foreground
-  useEffect(() => {
-    if (!supabaseUserId) return;
-    void syncNowRef.current();
-
-    const unsubscribeNet = NetInfo.addEventListener((state) => {
-      const online = Boolean(state.isConnected) && state.isInternetReachable !== false;
-      const wasOnline = onlineRef.current;
-      onlineRef.current = online;
-      setIsOnline(online);
-      if (online && !wasOnline) void syncNowRef.current();
-    });
-
-    const appStateSub = AppState.addEventListener('change', (state) => {
-      if (state === 'active') void syncNowRef.current();
-    });
-
-    return () => {
-      unsubscribeNet();
-      appStateSub.remove();
-      if (retryTimer.current) clearTimeout(retryTimer.current);
-    };
-  }, [supabaseUserId]);
-
-  const signOutSupabase = signOut;
 
   /** Deletes the account and all its data, then signs out. Returns an error message on failure. */
   const deleteAccountData = async (): Promise<string | null> => {
@@ -355,7 +178,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
           ? 'Account deletion is not set up on the server yet. Run the latest SQL schema in Supabase.'
           : 'Could not delete your account. Check your connection and try again.';
       }
-      commitOps([]);
+      sync.clearQueue();
     }
     await signOut();
     return null;
@@ -363,11 +186,6 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
 
   // ---- Data actions ------------------------------------------------------------------------
   // Each one updates the screen immediately and queues the change for Supabase (signed in only).
-  const enqueue = (body: SyncOpBody) => {
-    if (!supabaseUserId) return;
-    commitOps(enqueueOp(opsRef.current, body, randomUUID()));
-    void flush();
-  };
 
   const addShift = async (shiftData: Omit<Shift, 'id'>) => {
     const shift: Shift = { ...shiftData, id: randomUUID() };
@@ -382,8 +200,16 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   };
 
   const deleteShift = async (id: string) => {
+    const removed = shifts.find((s) => s.id === id);
     setShifts((prev) => prev.filter((s) => s.id !== id));
     enqueue({ type: 'delete_shift', shiftId: id });
+
+    if (removed) {
+      showUndo('Shift deleted', () => {
+        setShifts((prev) => (prev.some((s) => s.id === removed.id) ? prev : [removed, ...prev]));
+        enqueue({ type: 'upsert_shift', shift: removed });
+      });
+    }
   };
 
   const setPaymentStatus = async (
@@ -418,11 +244,26 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   };
 
   const deleteWorkplace = async (id: string) => {
+    const removedWorkplace = workplaces.find((w) => w.id === id);
+    const removedShifts = shifts.filter((s) => s.workplaceId === id);
+
     setWorkplaces((prev) => prev.filter((w) => w.id !== id));
     // Also remove associated shifts (the database cascades on delete)
     setShifts((prev) => prev.filter((s) => s.workplaceId !== id));
     setActiveWorkplaceId(null);
     enqueue({ type: 'delete_workplace', workplaceId: id });
+
+    if (removedWorkplace) {
+      showUndo(`${removedWorkplace.name} deleted`, () => {
+        setWorkplaces((prev) =>
+          prev.some((w) => w.id === removedWorkplace.id) ? prev : [...prev, removedWorkplace],
+        );
+        setShifts((prev) => [...removedShifts, ...prev.filter((s) => !removedShifts.some((r) => r.id === s.id))]);
+        // The workplace first, then its shifts, so the shifts always have something to point at
+        enqueue({ type: 'upsert_workplace', workplace: removedWorkplace });
+        removedShifts.forEach((shift) => enqueue({ type: 'upsert_shift', shift }));
+      });
+    }
   };
 
   const resetDemoData = () => {
@@ -430,7 +271,6 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     setPreferences(defaultPreferences());
     setWorkplaces(demoWorkplaces);
     setShifts(demoShifts);
-    setPayPeriods(demoPayPeriods);
     setActiveWorkplaceId(null);
     setShowPaymentTracking(false);
   };
@@ -440,14 +280,17 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     preferences,
     workplaces,
     shifts,
-    payPeriods,
 
     supabaseUser,
-    isOnline,
-    isSyncing,
-    pendingChanges: ops.length,
-    syncNow,
-    signOutSupabase,
+    isOnline: sync.isOnline,
+    isSyncing: sync.isSyncing,
+    pendingChanges: sync.pendingChanges,
+    syncNow: sync.syncNow,
+    isInitialLoading:
+      Boolean(supabaseUserId) && !sync.hasSynced && workplaces.length === 0 && shifts.length === 0,
+    undo,
+    dismissUndo,
+    signOutSupabase: signOut,
     deleteAccountData,
 
     updateUser: (updates) => setUser((prev) => ({ ...prev, ...updates })),
@@ -461,22 +304,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     setPaymentStatus,
     resetDemoData,
 
-    activeWorkplaceId,
-    setActiveWorkplaceId,
-    showPaymentTracking,
-    setShowPaymentTracking,
-
-    selectedShift,
-    openShiftDetails: setSelectedShift,
-    closeShiftDetails: () => setSelectedShift(null),
-    shiftEditor,
-    openAddShift: (workplaceId) => setShiftEditor({ isOpen: true, workplaceId, shift: null }),
-    openEditShift: (shift) => setShiftEditor({ isOpen: true, shift }),
-    closeShiftEditor: () => setShiftEditor({ isOpen: false, shift: null }),
-    workplaceEditor,
-    openAddWorkplace: () => setWorkplaceEditor({ isOpen: true, workplace: null }),
-    openEditWorkplace: (workplace) => setWorkplaceEditor({ isOpen: true, workplace }),
-    closeWorkplaceEditor: () => setWorkplaceEditor({ isOpen: false, workplace: null }),
+    ...modals,
   };
 
   return <AppStateContext.Provider value={value}>{children}</AppStateContext.Provider>;

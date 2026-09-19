@@ -144,6 +144,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                       : hasShifts && { backgroundColor: theme.accentSoft },
                   ]}>
                   <Text
+                    maxFontSizeMultiplier={1.3}
                     style={[
                       styles.dayText,
                       {

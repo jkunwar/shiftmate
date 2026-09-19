@@ -102,12 +102,44 @@ create policy "Users can manage their own workplaces"
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
+-- A shift must belong to the user AND point at one of the user's own workplaces
 create policy "Users can manage their own shifts"
   on public.shifts for all
   using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
+  with check (
+    auth.uid() = user_id
+    and exists (
+      select 1 from public.workplaces w
+      where w.id = workplace_id and w.user_id = auth.uid()
+    )
+  );
 
--- 5. Let a signed-in user delete their own account
+-- 5. Data checks and indexes
+-- "not valid" enforces the rules for new and changed rows without failing on rows that already exist
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'workplaces_valid_check') then
+    alter table public.workplaces add constraint workplaces_valid_check
+      check (char_length(btrim(name)) > 0 and coalesce(hourly_rate, 0) >= 0) not valid;
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'shifts_valid_check') then
+    alter table public.shifts add constraint shifts_valid_check
+      check (
+        worked_minutes >= 0
+        and coalesce(break_minutes, 0) >= 0
+        and coalesce(hourly_rate, 0) >= 0
+        and start_time ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$'
+        and end_time ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$'
+      ) not valid;
+  end if;
+end
+$$;
+
+create index if not exists workplaces_user_id_idx on public.workplaces (user_id);
+create index if not exists shifts_user_date_idx on public.shifts (user_id, date desc);
+create index if not exists shifts_workplace_id_idx on public.shifts (workplace_id);
+
+-- 6. Let a signed-in user delete their own account
 -- Deleting the auth user cascades to their workplaces and shifts (on delete cascade above).
 create or replace function public.delete_my_account()
 returns void

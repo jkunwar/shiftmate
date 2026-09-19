@@ -13,13 +13,19 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { BottomSheet } from '@/components/common/BottomSheet';
 import { ConfirmationDialog } from '@/components/common/ConfirmationDialog';
 import { PaymentStatusBadge } from '@/components/common/PaymentStatusBadge';
 import { DateField } from '@/components/common/DateTimeFields';
 import { useFormat } from '@/hooks/use-format';
 import { useTheme } from '@/hooks/use-theme';
 import { Shift, Workplace } from '@/types';
-import { formatDate, formatDuration, shiftEarnings } from '@/utils/timeCalculations';
+import {
+  formatDate,
+  formatDuration,
+  shiftEarnings,
+  toLocalDateString,
+} from '@/utils/timeCalculations';
 
 interface ShiftDetailsModalProps {
   isOpen: boolean;
@@ -38,14 +44,6 @@ interface ShiftDetailsModalProps {
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
-/** Today as YYYY-MM-DD in the device's local timezone (toISOString would use UTC). */
-function todayLocal(): string {
-  const now = new Date();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  return `${now.getFullYear()}-${month}-${day}`;
-}
-
 export const ShiftDetailsModal: React.FC<ShiftDetailsModalProps> = ({
   isOpen,
   shift,
@@ -62,7 +60,7 @@ export const ShiftDetailsModal: React.FC<ShiftDetailsModalProps> = ({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showMarkPaidModal, setShowMarkPaidModal] = useState(false);
   const [actualAmountInput, setActualAmountInput] = useState('');
-  const [paidDateInput, setPaidDateInput] = useState(todayLocal());
+  const [paidDateInput, setPaidDateInput] = useState(toLocalDateString());
 
   if (!isOpen || !shift) return null;
 
@@ -73,7 +71,7 @@ export const ShiftDetailsModal: React.FC<ShiftDetailsModalProps> = ({
 
   const handleOpenMarkPaid = () => {
     setActualAmountInput(earnings > 0 ? earnings.toFixed(2) : '');
-    setPaidDateInput(todayLocal());
+    setPaidDateInput(toLocalDateString());
     setShowMarkPaidModal(true);
   };
 
@@ -97,177 +95,161 @@ export const ShiftDetailsModal: React.FC<ShiftDetailsModalProps> = ({
   };
 
   return (
-    <Modal
-      visible
-      transparent
-      animationType="slide"
-      statusBarTranslucent
-      onRequestClose={onClose}>
-      <View style={styles.backdrop}>
-        {/* Tapping outside the sheet closes it. It is a sibling rather than a parent of the sheet so it never competes with scrolling inside. */}
-        <Pressable accessible={false} style={StyleSheet.absoluteFill} onPress={onClose} />
-        <View style={[styles.sheet, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-          {/* Header */}
-          <View style={[styles.header, { borderBottomColor: theme.border }]}>
-            <View style={styles.headerTitle}>
-              <View style={[styles.dot, { backgroundColor: workplace?.color || theme.accent }]} />
-              <Text numberOfLines={1} style={[styles.title, { color: theme.text }]}>
-                {workplace?.name || 'Workplace Shift'}
-              </Text>
-            </View>
-            <Pressable
-              accessibilityLabel="Close"
-              onPress={onClose}
-              hitSlop={8}
-              style={({ pressed }) => [
-                styles.closeButton,
-                pressed && { backgroundColor: theme.backgroundElement },
-              ]}>
-              <X color={theme.textSecondary} size={20} />
-            </Pressable>
+    <BottomSheet onClose={onClose} keyboardAvoiding={false} maxWidth={448} maxHeight="90%">
+      {/* Header */}
+      <View style={[styles.header, { borderBottomColor: theme.border }]}>
+        <View style={styles.headerTitle}>
+          <View style={[styles.dot, { backgroundColor: workplace?.color || theme.accent }]} />
+          <Text numberOfLines={1} style={[styles.title, { color: theme.text }]}>
+            {workplace?.name || 'Workplace Shift'}
+          </Text>
+        </View>
+        <Pressable
+          accessibilityLabel="Close"
+          onPress={onClose}
+          hitSlop={8}
+          style={({ pressed }) => [
+            styles.closeButton,
+            pressed && { backgroundColor: theme.backgroundElement },
+          ]}>
+          <X color={theme.textSecondary} size={20} />
+        </Pressable>
+      </View>
+
+      <ScrollView
+        contentContainerStyle={[styles.body, { paddingBottom: 20 + insets.bottom }]}
+        showsVerticalScrollIndicator={false}>
+        {/* Date headline */}
+        <View style={styles.gapTiny}>
+          <Text style={[styles.eyebrow, { color: theme.textSecondary }]}>Shift Date</Text>
+          <Text style={[styles.dateHeadline, { color: theme.text }]}>
+            {formatDate(shift.date, 'full')}
+          </Text>
+        </View>
+
+        {/* Time & break cards */}
+        <View style={styles.twoColumns}>
+          <View style={[styles.card, styles.column, cardStyle]}>
+            <Text style={[styles.cardLabel, { color: theme.textSecondary }]}>Working Hours</Text>
+            <Text style={[styles.cardValue, { color: theme.text }]}>
+              {time(shift.startTime)} – {time(shift.endTime)}
+            </Text>
           </View>
+          <View style={[styles.card, styles.column, cardStyle]}>
+            <Text style={[styles.cardLabel, { color: theme.textSecondary }]}>Break Duration</Text>
+            <Text style={[styles.cardValue, { color: theme.text }]}>
+              {shift.breakMinutes > 0 ? `${shift.breakMinutes} minutes` : 'No break'}
+            </Text>
+          </View>
+        </View>
 
-          <ScrollView
-            contentContainerStyle={[styles.body, { paddingBottom: 20 + insets.bottom }]}
-            showsVerticalScrollIndicator={false}>
-            {/* Date headline */}
-            <View style={styles.gapTiny}>
-              <Text style={[styles.eyebrow, { color: theme.textSecondary }]}>Shift Date</Text>
-              <Text style={[styles.dateHeadline, { color: theme.text }]}>
-                {formatDate(shift.date, 'full')}
+        {/* Total worked time & earnings */}
+        <View
+          style={[
+            styles.totalCard,
+            { backgroundColor: theme.accentSoft, borderColor: `${theme.accent}33` },
+          ]}>
+          <View>
+            <Text style={[styles.totalLabel, { color: theme.accent }]}>Total Worked</Text>
+            <Text style={[styles.totalValue, { color: theme.text }]}>
+              {formatDuration(shift.workedMinutes)}
+            </Text>
+          </View>
+          {hourlyRate > 0 ? (
+            <View style={styles.earnings}>
+              <Text style={[styles.totalLabel, { color: theme.textSecondary }]}>
+                Estimated Earnings ({currency}
+                {hourlyRate}/hr)
               </Text>
+              <Text style={[styles.earningsValue, { color: theme.text }]}>{money(earnings)}</Text>
             </View>
+          ) : null}
+        </View>
 
-            {/* Time & break cards */}
-            <View style={styles.twoColumns}>
-              <View style={[styles.card, styles.column, cardStyle]}>
-                <Text style={[styles.cardLabel, { color: theme.textSecondary }]}>Working Hours</Text>
-                <Text style={[styles.cardValue, { color: theme.text }]}>
-                  {time(shift.startTime)} – {time(shift.endTime)}
-                </Text>
-              </View>
-              <View style={[styles.card, styles.column, cardStyle]}>
-                <Text style={[styles.cardLabel, { color: theme.textSecondary }]}>Break Duration</Text>
-                <Text style={[styles.cardValue, { color: theme.text }]}>
-                  {shift.breakMinutes > 0 ? `${shift.breakMinutes} minutes` : 'No break'}
-                </Text>
-              </View>
-            </View>
-
-            {/* Total worked time & earnings */}
-            <View
-              style={[
-                styles.totalCard,
-                { backgroundColor: theme.accentSoft, borderColor: `${theme.accent}33` },
-              ]}>
-              <View>
-                <Text style={[styles.totalLabel, { color: theme.accent }]}>Total Worked</Text>
-                <Text style={[styles.totalValue, { color: theme.text }]}>
-                  {formatDuration(shift.workedMinutes)}
-                </Text>
-              </View>
-              {hourlyRate > 0 ? (
-                <View style={styles.earnings}>
-                  <Text style={[styles.totalLabel, { color: theme.textSecondary }]}>
-                    Estimated Earnings ({currency}{hourlyRate}/hr)
-                  </Text>
-                  <Text style={[styles.earningsValue, { color: theme.text }]}>
-                    {money(earnings)}
-                  </Text>
-                </View>
-              ) : null}
-            </View>
-
-            {/* Payment status */}
-            <View style={[styles.card, styles.statusCard, cardStyle]}>
-              <View style={styles.gapTiny}>
-                <Text style={[styles.cardLabel, { color: theme.textSecondary }]}>
-                  Payment Status
-                </Text>
-                {isPaid && shift.paidDate ? (
-                  <Text style={[styles.paidOn, { color: theme.textSecondary }]}>
-                    Paid on {formatDate(shift.paidDate, 'short')}
-                    {shift.actualPaidAmount !== undefined
-                      ? ` (${money(shift.actualPaidAmount)})`
-                      : ''}
-                  </Text>
-                ) : null}
-              </View>
-              <PaymentStatusBadge status={shift.paymentStatus} size="md" />
-            </View>
-
-            {/* Notes */}
-            {shift.notes ? (
-              <View style={[styles.card, cardStyle]}>
-                <Text style={[styles.cardLabel, { color: theme.textSecondary }]}>Shift Notes</Text>
-                <Text style={[styles.notes, { color: theme.text }]}>{shift.notes}</Text>
-              </View>
+        {/* Payment status */}
+        <View style={[styles.card, styles.statusCard, cardStyle]}>
+          <View style={styles.gapTiny}>
+            <Text style={[styles.cardLabel, { color: theme.textSecondary }]}>Payment Status</Text>
+            {isPaid && shift.paidDate ? (
+              <Text style={[styles.paidOn, { color: theme.textSecondary }]}>
+                Paid on {formatDate(shift.paidDate, 'short')}
+                {shift.actualPaidAmount !== undefined ? ` (${money(shift.actualPaidAmount)})` : ''}
+              </Text>
             ) : null}
+          </View>
+          <PaymentStatusBadge status={shift.paymentStatus} size="md" />
+        </View>
 
-            {/* Actions */}
-            <View style={styles.actions}>
-              <View style={styles.actionRow}>
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={() => onEdit(shift)}
-                  style={({ pressed }) => [
-                    styles.actionButton,
-                    styles.column,
-                    {
-                      backgroundColor: pressed ? theme.backgroundElement : theme.surface,
-                      borderColor: theme.border,
-                    },
-                  ]}>
-                  <Edit3 color={theme.text} size={14} />
-                  <Text style={[styles.actionText, { color: theme.text }]}>Edit Shift</Text>
-                </Pressable>
+        {/* Notes */}
+        {shift.notes ? (
+          <View style={[styles.card, cardStyle]}>
+            <Text style={[styles.cardLabel, { color: theme.textSecondary }]}>Shift Notes</Text>
+            <Text style={[styles.notes, { color: theme.text }]}>{shift.notes}</Text>
+          </View>
+        ) : null}
 
-                {isPaid ? (
-                  <Pressable
-                    accessibilityRole="button"
-                    onPress={handleMarkUnpaid}
-                    style={({ pressed }) => [
-                      styles.actionButton,
-                      styles.column,
-                      {
-                        backgroundColor: theme.warningSoft,
-                        borderColor: `${theme.warning}55`,
-                      },
-                      pressed && styles.pressed,
-                    ]}>
-                    <Text style={[styles.actionText, { color: theme.warning }]}>Mark as Unpaid</Text>
-                  </Pressable>
-                ) : (
-                  <Pressable
-                    accessibilityRole="button"
-                    onPress={handleOpenMarkPaid}
-                    style={({ pressed }) => [
-                      styles.actionButton,
-                      styles.column,
-                      { backgroundColor: theme.success, borderColor: theme.success },
-                      pressed && styles.pressed,
-                    ]}>
-                    <CheckCircle2 color={theme.onAccent} size={14} />
-                    <Text style={[styles.actionText, { color: theme.onAccent }]}>Mark as Paid</Text>
-                  </Pressable>
-                )}
-              </View>
+        {/* Actions */}
+        <View style={styles.actions}>
+          <View style={styles.actionRow}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => onEdit(shift)}
+              style={({ pressed }) => [
+                styles.actionButton,
+                styles.column,
+                {
+                  backgroundColor: pressed ? theme.backgroundElement : theme.surface,
+                  borderColor: theme.border,
+                },
+              ]}>
+              <Edit3 color={theme.text} size={14} />
+              <Text style={[styles.actionText, { color: theme.text }]}>Edit Shift</Text>
+            </Pressable>
 
+            {isPaid ? (
               <Pressable
                 accessibilityRole="button"
-                onPress={() => setShowDeleteConfirm(true)}
+                onPress={handleMarkUnpaid}
                 style={({ pressed }) => [
                   styles.actionButton,
-                  styles.deleteButton,
-                  pressed && { backgroundColor: theme.dangerSoft },
+                  styles.column,
+                  {
+                    backgroundColor: theme.warningSoft,
+                    borderColor: `${theme.warning}55`,
+                  },
+                  pressed && styles.pressed,
                 ]}>
-                <Trash2 color={theme.danger} size={14} />
-                <Text style={[styles.actionText, { color: theme.danger }]}>Delete Shift</Text>
+                <Text style={[styles.actionText, { color: theme.warning }]}>Mark as Unpaid</Text>
               </Pressable>
-            </View>
-          </ScrollView>
+            ) : (
+              <Pressable
+                accessibilityRole="button"
+                onPress={handleOpenMarkPaid}
+                style={({ pressed }) => [
+                  styles.actionButton,
+                  styles.column,
+                  { backgroundColor: theme.success, borderColor: theme.success },
+                  pressed && styles.pressed,
+                ]}>
+                <CheckCircle2 color={theme.onAccent} size={14} />
+                <Text style={[styles.actionText, { color: theme.onAccent }]}>Mark as Paid</Text>
+              </Pressable>
+            )}
+          </View>
+
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => setShowDeleteConfirm(true)}
+            style={({ pressed }) => [
+              styles.actionButton,
+              styles.deleteButton,
+              pressed && { backgroundColor: theme.dangerSoft },
+            ]}>
+            <Trash2 color={theme.danger} size={14} />
+            <Text style={[styles.actionText, { color: theme.danger }]}>Delete Shift</Text>
+          </Pressable>
         </View>
-      </View>
+      </ScrollView>
 
       {/* Nested inside this Modal: iOS can't reliably present a second, sibling Modal on top */}
       <ConfirmationDialog
@@ -297,8 +279,16 @@ export const ShiftDetailsModal: React.FC<ShiftDetailsModalProps> = ({
           style={styles.flex}>
           <View style={styles.dialogBackdrop}>
             {/* Tapping outside the sheet closes it. It is a sibling rather than a parent of the sheet so it never competes with scrolling inside. */}
-            <Pressable accessible={false} style={StyleSheet.absoluteFill} onPress={() => setShowMarkPaidModal(false)} />
-            <View style={[styles.dialog, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+            <Pressable
+              accessible={false}
+              style={StyleSheet.absoluteFill}
+              onPress={() => setShowMarkPaidModal(false)}
+            />
+            <View
+              style={[
+                styles.dialog,
+                { backgroundColor: theme.surface, borderColor: theme.border },
+              ]}>
               <View style={styles.dialogHeader}>
                 <Text style={[styles.dialogTitle, { color: theme.text }]}>Mark Shift as Paid</Text>
                 <Pressable
@@ -372,7 +362,7 @@ export const ShiftDetailsModal: React.FC<ShiftDetailsModalProps> = ({
           </View>
         </KeyboardAvoidingView>
       </Modal>
-    </Modal>
+    </BottomSheet>
   );
 };
 

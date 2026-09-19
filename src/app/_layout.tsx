@@ -4,11 +4,18 @@ import { StatusBar } from 'expo-status-bar';
 import { AppModals } from '@/components/app-modals';
 import AppTabs from '@/components/app-tabs';
 import { AuthGate } from '@/components/auth-gate';
+import { ErrorFallback } from '@/components/error-fallback';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AppStateProvider } from '@/lib/app-state';
 import { AuthProvider } from '@/lib/auth';
+import { installGlobalErrorHandler } from '@/lib/error-reporting';
 import { ThemeModeProvider } from '@/lib/theme-mode';
+
+installGlobalErrorHandler();
+
+/** expo-router renders this in place of the layout when a render error escapes. */
+export { ErrorFallback as ErrorBoundary };
 
 const navigationThemes = {
   light: {

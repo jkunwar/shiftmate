@@ -29,6 +29,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SetPasswordForm } from '@/components/auth/SetPasswordForm';
 import { ConfirmationDialog } from '@/components/common/ConfirmationDialog';
 import { DeleteAccountModal } from '@/components/common/DeleteAccountModal';
+import { SegmentedControl } from '@/components/common/SegmentedControl';
 import { BottomTabInset } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { User, UserPreferences } from '@/types';
@@ -131,42 +132,6 @@ function PreferenceRow({
         <Text style={[styles.prefDescription, { color: theme.textSecondary }]}>{description}</Text>
       </View>
       {children}
-    </View>
-  );
-}
-
-function Segmented<T extends string>({
-  options,
-  value,
-  onChange,
-}: {
-  options: { value: T; label: string }[];
-  value: T;
-  onChange: (value: T) => void;
-}) {
-  const theme = useTheme();
-
-  return (
-    <View style={[styles.segmented, { backgroundColor: theme.backgroundElement }]}>
-      {options.map((option) => {
-        const selected = option.value === value;
-        return (
-          <Pressable
-            key={option.value}
-            accessibilityRole="button"
-            accessibilityState={{ selected }}
-            onPress={() => onChange(option.value)}
-            style={[styles.segment, selected && { backgroundColor: theme.surface }]}>
-            <Text
-              style={[
-                styles.segmentText,
-                { color: selected ? theme.accent : theme.textSecondary },
-              ]}>
-              {option.label}
-            </Text>
-          </Pressable>
-        );
-      })}
     </View>
   );
 }
@@ -322,7 +287,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
         </PreferenceRow>
 
         <PreferenceRow title="Week Starts On" description="Calendar and weekly grouping">
-          <Segmented
+          <SegmentedControl
+            selectedTone="accent"
             options={[
               { value: 'monday', label: 'Monday' },
               { value: 'sunday', label: 'Sunday' },
@@ -333,7 +299,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
         </PreferenceRow>
 
         <PreferenceRow title="Time Format" description="12-hour or 24-hour clock">
-          <Segmented
+          <SegmentedControl
+            selectedTone="accent"
             options={[
               { value: '12h', label: '12h' },
               { value: '24h', label: '24h' },
@@ -344,7 +311,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
         </PreferenceRow>
 
         <PreferenceRow title="Currency" description="Symbol shown next to amounts">
-          <Segmented
+          <SegmentedControl
+            selectedTone="accent"
             options={[
               { value: '$', label: '$' },
               { value: '€', label: '€' },
@@ -687,20 +655,6 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     textAlign: 'right',
     fontWeight: '700',
-  },
-  segmented: {
-    flexDirection: 'row',
-    padding: 2,
-    borderRadius: 8,
-  },
-  segment: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  segmentText: {
-    fontSize: 12,
-    fontWeight: '600',
   },
   themeToggle: {
     padding: 8,

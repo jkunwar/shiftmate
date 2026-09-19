@@ -41,17 +41,6 @@ export interface Shift {
   notes?: string;
 }
 
-export interface PayPeriod {
-  id: string;
-  workplaceId: string;
-  startDate: string;
-  endDate: string;
-  expectedAmount: number;
-  actualAmount?: number;
-  status: PaymentStatus;
-  paidDate?: string;
-}
-
 export interface WeekGroup {
   weekNumber: number;
   weekLabel: string; // e.g. "Week 1", "Week 2"
@@ -81,12 +70,3 @@ export interface UserPreferences {
   weeklyHoursReminder: boolean;
   unpaidHoursReminder: boolean;
 }
-
-export type TabType = 'home' | 'workplaces' | 'reports';
-
-export type ActiveScreen =
-  | { type: 'tabs'; tab: TabType }
-  | { type: 'workplace-detail'; workplaceId: string }
-  | { type: 'payment-tracking' }
-  | { type: 'settings' }
-  | { type: 'onboarding' };

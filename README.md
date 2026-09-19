@@ -1,56 +1,72 @@
-# Welcome to your Expo app 👋
+# ShiftMate
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Track work shifts across multiple jobs, see what you're owed, and export timesheets.
+Built with Expo (SDK 57) and Expo Router, with Supabase for accounts and cloud sync.
 
-## Get started
+## Features
 
-1. Install dependencies
+- Workplaces with hourly rates, colours and a usual weekly schedule
+- Shifts with breaks, overnight support, payment status and a saved pay rate per shift
+- Home summary, weekly/monthly work log, calendar, payment tracking and reports
+- Export timesheets as PDF or CSV, or share a text summary (hours only, no pay figures)
+- Email sign-up / sign-in, password reset, account deletion
+- Offline-first: works without a connection and syncs when back online
+- Light and dark themes, currency and 12h/24h settings, optional weekly reminders
 
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Setup
 
 ```bash
-npm run reset-project
+npm install
+cp .env.example .env   # then fill in your Supabase values
+npx expo start
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Environment variables (`.env`, never committed):
 
-### Other setup steps
+| Variable | Where to find it |
+| --- | --- |
+| `EXPO_PUBLIC_SUPABASE_URL` | Supabase → Project Settings → API |
+| `EXPO_PUBLIC_SUPABASE_ANON_KEY` | Supabase → Project Settings → API (the anon / publishable key, **not** `service_role`) |
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+Without these the app runs in local-only mode with demo data and no sign-in.
 
-## Learn more
+### Supabase
 
-To learn more about developing your project with Expo, look at the following resources:
+1. Run the SQL in `SUPABASE_SQL_SCHEMA` ([src/lib/supabase.ts](src/lib/supabase.ts)) in the SQL Editor.
+   It creates the tables, row-level security policies and the `delete_my_account()` function.
+2. Authentication → URL Configuration:
+   - Site URL: `shiftmate://auth-callback`
+   - Redirect URLs: `shiftmate://auth-callback` and, for Expo Go, `exp://**`
+3. Authentication → Providers → Email: choose whether "Confirm email" is required.
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+### Development build
 
-## Join the community
+Expo Go is enough for most work, but reminders (`expo-notifications`) need a development build on Android:
 
-Join our community of developers creating universal apps.
+```bash
+npx eas build --profile development --platform android
+```
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## Scripts
+
+| Command | What it does |
+| --- | --- |
+| `npm start` | Start the Expo dev server |
+| `npm run typecheck` | TypeScript check |
+| `npm run lint` | ESLint via Expo |
+
+## Releasing
+
+Build profiles are in [eas.json](eas.json); the identifier is `com.jkunwar.shiftmate` on both platforms.
+
+1. `npx eas login`, then `npx eas init` (links the project and adds its id to `app.json`).
+2. Add the Supabase values as EAS environment variables so store builds can see them
+   (`EXPO_PUBLIC_*` values are compiled in at build time, and `.env` is not uploaded):
+   ```bash
+   npx eas env:create --name EXPO_PUBLIC_SUPABASE_URL --value "https://<project>.supabase.co" --environment production --visibility plaintext
+   npx eas env:create --name EXPO_PUBLIC_SUPABASE_ANON_KEY --value "<anon key>" --environment production --visibility plaintext
+   ```
+   Repeat with `--environment preview` (and `development`) for those profiles.
+3. `npx eas build --profile production --platform all`, then `npx eas submit`.
+
+Before submitting to the stores you'll also need a privacy policy URL, store listing text and screenshots.

@@ -291,3 +291,32 @@ export function weekStartOf(dateStr: string, weekStartsOn: UserPreferences['week
   const offset = weekStartsOn === 'monday' ? (weekday + 6) % 7 : weekday;
   return addDays(dateStr, -offset);
 }
+
+const MINUTES_PER_DAY = 24 * 60;
+
+/** The shift as a [start, end) interval in minutes since 1970, so overnight shifts compare correctly. */
+function shiftInterval(shift: Pick<Shift, 'date' | 'startTime' | 'endTime'>): [number, number] {
+  const [year, month, day] = shift.date.split('-').map(Number);
+  const dayIndex = Math.floor(Date.UTC(year, month - 1, day) / 86_400_000);
+  const [startH, startM] = shift.startTime.split(':').map(Number);
+  const [endH, endM] = shift.endTime.split(':').map(Number);
+
+  const start = dayIndex * MINUTES_PER_DAY + startH * 60 + startM;
+  let end = dayIndex * MINUTES_PER_DAY + endH * 60 + endM;
+  if (end <= start) end += MINUTES_PER_DAY; // finishes after midnight
+  return [start, end];
+}
+
+/** The first existing shift whose time overlaps `candidate` (ignoring the shift being edited), if any. */
+export function findOverlappingShift(
+  candidate: Pick<Shift, 'date' | 'startTime' | 'endTime'>,
+  existing: Shift[],
+  ignoreId?: string,
+): Shift | undefined {
+  const [start, end] = shiftInterval(candidate);
+  return existing.find((other) => {
+    if (other.id === ignoreId) return false;
+    const [otherStart, otherEnd] = shiftInterval(other);
+    return start < otherEnd && otherStart < end;
+  });
+}

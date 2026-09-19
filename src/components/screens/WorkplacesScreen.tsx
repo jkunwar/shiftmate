@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EmptyState } from '@/components/common/EmptyState';
 import { WorkplaceCard } from '@/components/workplaces/WorkplaceCard';
 import { BottomTabInset } from '@/constants/theme';
+import { useRefreshControl } from '@/components/common/refresh-control';
 import { useTheme } from '@/hooks/use-theme';
 import { useToday } from '@/hooks/use-today';
 import { Shift, Workplace } from '@/types';
@@ -16,15 +17,19 @@ interface WorkplacesScreenProps {
   shifts: Shift[];
   onSelectWorkplace: (workplaceId: string) => void;
   onAddWorkplace: () => void;
+  /** Pull-to-refresh handler (syncs with the cloud). Omit to turn the gesture off. */
+  onRefresh?: () => Promise<void>;
 }
 
 export const WorkplacesScreen: React.FC<WorkplacesScreenProps> = ({
+  onRefresh,
   workplaces,
   shifts,
   onSelectWorkplace,
   onAddWorkplace,
 }) => {
   const theme = useTheme();
+  const refreshControl = useRefreshControl(onRefresh);
   const insets = useSafeAreaInsets();
 
   const today = useToday();
@@ -33,6 +38,7 @@ export const WorkplacesScreen: React.FC<WorkplacesScreenProps> = ({
 
   return (
     <ScrollView
+        refreshControl={refreshControl}
       contentContainerStyle={[
         styles.content,
         { paddingTop: insets.top + 8, paddingBottom: BottomTabInset + insets.bottom + 16 },

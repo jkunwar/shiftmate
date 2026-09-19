@@ -8,6 +8,8 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
 import { useTheme } from '@/hooks/use-theme';
 
 interface LoadingSkeletonProps {
@@ -45,6 +47,7 @@ function Bone({ height, width = '100%', radius = 6, tone = 'strong', bordered }:
 /** Pulses all of its children together, like Tailwind's `animate-pulse`. */
 function Pulse({ children }: { children: React.ReactNode }) {
   const opacity = useSharedValue(1);
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     opacity.value = withRepeat(
@@ -56,7 +59,11 @@ function Pulse({ children }: { children: React.ReactNode }) {
 
   const animatedStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
 
-  return <Animated.View style={[styles.container, animatedStyle]}>{children}</Animated.View>;
+  return (
+    <Animated.View style={[styles.container, { paddingTop: insets.top + 8 }, animatedStyle]}>
+      {children}
+    </Animated.View>
+  );
 }
 
 export const LoadingSkeleton: React.FC<LoadingSkeletonProps> = ({ type }) => {

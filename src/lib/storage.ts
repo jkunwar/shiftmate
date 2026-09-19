@@ -5,7 +5,6 @@ export const STORAGE_KEYS = {
   preferences: 'wht_prefs',
   workplaces: 'wht_workplaces',
   shifts: 'wht_shifts',
-  payPeriods: 'wht_payperiods',
   outbox: 'wht_outbox',
 } as const;
 
@@ -36,7 +35,7 @@ export function clearStoredAccountData() {
     localStorage.removeItem(STORAGE_KEYS.user);
     localStorage.removeItem(STORAGE_KEYS.workplaces);
     localStorage.removeItem(STORAGE_KEYS.shifts);
-    localStorage.removeItem(STORAGE_KEYS.payPeriods);
+    localStorage.removeItem('wht_payperiods'); // no longer stored; clears what older versions saved
     localStorage.removeItem(STORAGE_KEYS.outbox);
   } catch {
     // Nothing to clear

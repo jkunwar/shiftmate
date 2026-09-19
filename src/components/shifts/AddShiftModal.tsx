@@ -1,8 +1,8 @@
 import { AlertCircle, Check, Clock, Sparkles, X } from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
-  KeyboardAvoidingView,
-  Modal,
+  Alert,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -12,11 +12,18 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { BottomSheet } from '@/components/common/BottomSheet';
 import { DateField, TimeField } from '@/components/common/DateTimeFields';
 import { useFormat } from '@/hooks/use-format';
 import { useTheme } from '@/hooks/use-theme';
 import { PaymentStatus, Shift, Workplace } from '@/types';
-import { calculateWorkedMinutes, formatDuration } from '@/utils/timeCalculations';
+import {
+  calculateWorkedMinutes,
+  findOverlappingShift,
+  formatDate,
+  formatDuration,
+  toLocalDateString,
+} from '@/utils/timeCalculations';
 
 interface AddShiftModalProps {
   isOpen: boolean;
@@ -25,17 +32,12 @@ interface AddShiftModalProps {
   workplaces: Workplace[];
   defaultWorkplaceId?: string;
   initialShift?: Shift | null; // For editing existing shift
+  /** Used to warn when the new shift overlaps one that's already logged. */
+  existingShifts?: Shift[];
 }
 
 const BREAK_OPTIONS = [0, 15, 30, 45, 60];
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
-
-/** Formats a Date as YYYY-MM-DD in the device's local timezone (toISOString would use UTC). */
-function toLocalDateString(date: Date): string {
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${date.getFullYear()}-${month}-${day}`;
-}
 
 /** Shows a rate in the input, leaving it blank when there isn't one. */
 function rateToInput(rate?: number): string {
@@ -46,19 +48,75 @@ function isValidDate(value: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
   const [year, month, day] = value.split('-').map(Number);
   const parsed = new Date(year, month - 1, day);
-  return parsed.getFullYear() === year && parsed.getMonth() === month - 1 && parsed.getDate() === day;
+  return (
+    parsed.getFullYear() === year && parsed.getMonth() === month - 1 && parsed.getDate() === day
+  );
 }
 
-export const AddShiftModal: React.FC<AddShiftModalProps> = ({
-  isOpen,
+interface FormValues {
+  workplaceId: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  breakMinutes: number;
+  paymentStatus: PaymentStatus;
+  paidDate: string;
+  notes: string;
+  rateInput: string;
+}
+
+/** Starting values: the shift being edited, or defaults (with the workplace's usual schedule) for a new one. */
+function initialFormValues(
+  {
+    initialShift,
+    defaultWorkplaceId,
+    workplaces,
+  }: Pick<AddShiftModalProps, 'initialShift' | 'defaultWorkplaceId' | 'workplaces'>,
+  todayStr: string,
+): FormValues {
+  if (initialShift) {
+    return {
+      workplaceId: initialShift.workplaceId,
+      date: initialShift.date,
+      startTime: initialShift.startTime,
+      endTime: initialShift.endTime,
+      breakMinutes: initialShift.breakMinutes || 0,
+      paymentStatus: initialShift.paymentStatus,
+      paidDate: initialShift.paidDate || todayStr,
+      notes: initialShift.notes || '',
+      rateInput: rateToInput(
+        initialShift.hourlyRate ??
+          workplaces.find((w) => w.id === initialShift.workplaceId)?.hourlyRate,
+      ),
+    };
+  }
+
+  const workplaceId = defaultWorkplaceId || (workplaces.length > 0 ? workplaces[0].id : '');
+  const workplace = workplaces.find((w) => w.id === workplaceId);
+  const activeSchedule = workplace?.usualSchedule?.find((s) => s.active);
+  return {
+    workplaceId,
+    date: todayStr,
+    startTime: activeSchedule?.startTime ?? '16:00',
+    endTime: activeSchedule?.endTime ?? '21:00',
+    breakMinutes: 0,
+    paymentStatus: 'unpaid',
+    paidDate: todayStr,
+    notes: '',
+    rateInput: rateToInput(workplace?.hourlyRate),
+  };
+}
+
+const AddShiftForm: React.FC<Omit<AddShiftModalProps, 'isOpen'>> = ({
   onClose,
   onSave,
   workplaces,
   defaultWorkplaceId,
   initialShift,
+  existingShifts = [],
 }) => {
   const theme = useTheme();
-  const { money, currency } = useFormat();
+  const { money, time, currency } = useFormat();
   const insets = useSafeAreaInsets();
 
   const now = new Date();
@@ -67,59 +125,22 @@ export const AddShiftModal: React.FC<AddShiftModalProps> = ({
   yesterdayDate.setDate(yesterdayDate.getDate() - 1);
   const yesterdayStr = toLocalDateString(yesterdayDate);
 
-  const [workplaceId, setWorkplaceId] = useState<string>('');
-  const [date, setDate] = useState<string>(todayStr);
-  const [startTime, setStartTime] = useState<string>('16:00');
-  const [endTime, setEndTime] = useState<string>('21:00');
-  const [breakMinutes, setBreakMinutes] = useState<number>(0);
-  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>('unpaid');
-  const [paidDate, setPaidDate] = useState<string>(todayStr);
-  const [notes, setNotes] = useState<string>('');
+  // The form is mounted fresh each time the modal opens, so its state starts from these values
+  const [initial] = useState(() =>
+    initialFormValues({ initialShift, defaultWorkplaceId, workplaces }, todayStr),
+  );
+
+  const [workplaceId, setWorkplaceId] = useState<string>(initial.workplaceId);
+  const [date, setDate] = useState<string>(initial.date);
+  const [startTime, setStartTime] = useState<string>(initial.startTime);
+  const [endTime, setEndTime] = useState<string>(initial.endTime);
+  const [breakMinutes, setBreakMinutes] = useState<number>(initial.breakMinutes);
+  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>(initial.paymentStatus);
+  const [paidDate, setPaidDate] = useState<string>(initial.paidDate);
+  const [notes, setNotes] = useState<string>(initial.notes);
   // Pay rate saved with this shift; starts from the workplace's rate and can be changed per shift
-  const [rateInput, setRateInput] = useState<string>('');
+  const [rateInput, setRateInput] = useState<string>(initial.rateInput);
   const [errorMsg, setErrorMsg] = useState<string>('');
-
-  // Synchronize on open or change of initialShift
-  useEffect(() => {
-    if (isOpen) {
-      if (initialShift) {
-        setWorkplaceId(initialShift.workplaceId);
-        setDate(initialShift.date);
-        setStartTime(initialShift.startTime);
-        setEndTime(initialShift.endTime);
-        setBreakMinutes(initialShift.breakMinutes || 0);
-        setPaymentStatus(initialShift.paymentStatus);
-        setPaidDate(initialShift.paidDate || todayStr);
-        setNotes(initialShift.notes || '');
-        setRateInput(
-          rateToInput(
-            initialShift.hourlyRate ??
-              workplaces.find((w) => w.id === initialShift.workplaceId)?.hourlyRate,
-          ),
-        );
-      } else {
-        // New shift: Pre-select workplace
-        const targetWpId = defaultWorkplaceId || (workplaces.length > 0 ? workplaces[0].id : '');
-        setWorkplaceId(targetWpId);
-        setDate(todayStr);
-        setRateInput(rateToInput(workplaces.find((w) => w.id === targetWpId)?.hourlyRate));
-
-        // Check if the selected workplace has a usual schedule
-        const wp = workplaces.find((w) => w.id === targetWpId);
-        const activeSchedule = wp?.usualSchedule?.find((s) => s.active);
-        setStartTime(activeSchedule?.startTime ?? '16:00');
-        setEndTime(activeSchedule?.endTime ?? '21:00');
-
-        setBreakMinutes(0);
-        setPaymentStatus('unpaid');
-        setPaidDate(todayStr);
-        setNotes('');
-      }
-      setErrorMsg('');
-    }
-  }, [isOpen, initialShift, defaultWorkplaceId, workplaces, todayStr]);
-
-  if (!isOpen) return null;
 
   const currentWorkplace = workplaces.find((w) => w.id === workplaceId);
   // Some locales' decimal keypads produce "18,5"
@@ -168,20 +189,43 @@ export const AddShiftModal: React.FC<AddShiftModalProps> = ({
       return;
     }
 
-    onSave({
-      workplaceId,
-      date,
-      startTime,
-      endTime,
-      breakMinutes,
-      workedMinutes,
-      hourlyRate,
-      paymentStatus,
-      paidDate: paymentStatus === 'paid' ? paidDate : undefined,
-      notes: notes.trim() ? notes.trim() : undefined,
-    });
+    const save = () => {
+      onSave({
+        workplaceId,
+        date,
+        startTime,
+        endTime,
+        breakMinutes,
+        workedMinutes,
+        hourlyRate,
+        paymentStatus,
+        paidDate: paymentStatus === 'paid' ? paidDate : undefined,
+        notes: notes.trim() ? notes.trim() : undefined,
+      });
+      onClose();
+    };
 
-    onClose();
+    // Two shifts at the same time is usually a slip, but sometimes intended, so ask instead of blocking
+    const overlapping = findOverlappingShift(
+      { date, startTime, endTime },
+      existingShifts,
+      initialShift?.id,
+    );
+    if (overlapping && Platform.OS !== 'web') {
+      const where =
+        workplaces.find((w) => w.id === overlapping.workplaceId)?.name ?? 'another shift';
+      Alert.alert(
+        'Overlapping shift',
+        `This overlaps ${where} (${time(overlapping.startTime)} – ${time(overlapping.endTime)}) on ${formatDate(overlapping.date, 'medium')}. Save it anyway?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Save Anyway', onPress: save },
+        ],
+      );
+      return;
+    }
+
+    save();
   };
 
   const inputStyle = {
@@ -196,341 +240,307 @@ export const AddShiftModal: React.FC<AddShiftModalProps> = ({
   });
 
   return (
-    <Modal
-      visible
-      transparent
-      animationType="slide"
-      statusBarTranslucent
-      onRequestClose={onClose}>
-      <KeyboardAvoidingView behavior="padding" style={styles.flex}>
-        <View style={styles.backdrop}>
-          {/* Tapping outside the sheet closes it. It is a sibling rather than a parent of the sheet so it never competes with scrolling inside. */}
-          <Pressable accessible={false} style={StyleSheet.absoluteFill} onPress={onClose} />
-          <View style={[styles.sheet, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-            {/* Header */}
-            <View style={[styles.header, { borderBottomColor: theme.border }]}>
-              <View>
-                <Text style={[styles.title, { color: theme.text }]}>
-                  {initialShift ? 'Edit Shift' : 'Add Shift'}
-                </Text>
-                <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-                  Record worked hours in seconds
-                </Text>
-              </View>
-              <Pressable
-                accessibilityLabel="Close"
-                onPress={onClose}
-                hitSlop={8}
-                style={({ pressed }) => [
-                  styles.closeButton,
-                  pressed && { backgroundColor: theme.backgroundElement },
-                ]}>
-                <X color={theme.textSecondary} size={20} />
-              </Pressable>
+    <BottomSheet onClose={onClose}>
+      {/* Header */}
+      <View style={[styles.header, { borderBottomColor: theme.border }]}>
+        <View>
+          <Text style={[styles.title, { color: theme.text }]}>
+            {initialShift ? 'Edit Shift' : 'Add Shift'}
+          </Text>
+          <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+            Record worked hours in seconds
+          </Text>
+        </View>
+        <Pressable
+          accessibilityLabel="Close"
+          onPress={onClose}
+          hitSlop={8}
+          style={({ pressed }) => [
+            styles.closeButton,
+            pressed && { backgroundColor: theme.backgroundElement },
+          ]}>
+          <X color={theme.textSecondary} size={20} />
+        </Pressable>
+      </View>
+
+      {/* Form body */}
+      <ScrollView
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={[styles.body, { paddingBottom: 20 + insets.bottom }]}>
+        {errorMsg ? (
+          <View
+            style={[
+              styles.banner,
+              { backgroundColor: theme.dangerSoft, borderColor: `${theme.danger}55` },
+            ]}>
+            <AlertCircle color={theme.danger} size={16} />
+            <Text style={[styles.bannerText, { color: theme.danger }]}>{errorMsg}</Text>
+          </View>
+        ) : null}
+
+        {/* Workplace selection */}
+        <View style={styles.field}>
+          <Text style={[styles.label, { color: theme.text }]}>Workplace</Text>
+          <View style={styles.chipWrap}>
+            {workplaces.map((wp) => {
+              const selected = wp.id === workplaceId;
+              return (
+                <Pressable
+                  key={wp.id}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected }}
+                  onPress={() => {
+                    setWorkplaceId(wp.id);
+                    setRateInput(rateToInput(wp.hourlyRate));
+                  }}
+                  style={[styles.workplaceChip, chipStyle(selected)]}>
+                  <View style={[styles.dot, { backgroundColor: wp.color || theme.accent }]} />
+                  <Text
+                    style={[
+                      styles.chipText,
+                      { color: selected ? theme.accent : theme.text },
+                      selected && styles.chipTextSelected,
+                    ]}>
+                    {wp.name}
+                    {wp.hourlyRate ? ` (${currency}${wp.hourlyRate.toFixed(2)}/hr)` : ''}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          {activeSchedule ? (
+            <Pressable
+              accessibilityRole="button"
+              onPress={handleApplyUsualSchedule}
+              style={styles.quickFill}>
+              <Sparkles color={theme.accent} size={12} />
+              <Text style={[styles.quickFillText, { color: theme.accent }]}>
+                Quick fill regular schedule
+              </Text>
+            </Pressable>
+          ) : null}
+        </View>
+
+        {/* Date with quick select */}
+        <View style={styles.field}>
+          <View style={styles.fieldHeader}>
+            <Text style={[styles.label, { color: theme.text }]}>Date</Text>
+            <View style={styles.quickDates}>
+              {(
+                [
+                  ['Today', todayStr],
+                  ['Yesterday', yesterdayStr],
+                ] as const
+              ).map(([label, value]) => {
+                const selected = date === value;
+                return (
+                  <Pressable
+                    key={label}
+                    accessibilityRole="button"
+                    hitSlop={{ top: 10, bottom: 10, left: 4, right: 4 }}
+                    onPress={() => setDate(value)}
+                    style={[styles.quickDate, selected && { backgroundColor: theme.accentSoft }]}>
+                    <Text
+                      style={[
+                        styles.quickDateText,
+                        { color: selected ? theme.accent : theme.textSecondary },
+                        selected && styles.chipTextSelected,
+                      ]}>
+                      {label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
             </View>
+          </View>
+          <DateField value={date} onChange={setDate} accessibilityLabel="Shift date" />
+        </View>
 
-            {/* Form body */}
-            <ScrollView
-              keyboardShouldPersistTaps="handled"
-              contentContainerStyle={[styles.body, { paddingBottom: 20 + insets.bottom }]}>
-              {errorMsg ? (
-                <View
-                  style={[
-                    styles.banner,
-                    { backgroundColor: theme.dangerSoft, borderColor: `${theme.danger}55` },
-                  ]}>
-                  <AlertCircle color={theme.danger} size={16} />
-                  <Text style={[styles.bannerText, { color: theme.danger }]}>{errorMsg}</Text>
-                </View>
-              ) : null}
-
-              {/* Workplace selection */}
-              <View style={styles.field}>
-                <Text style={[styles.label, { color: theme.text }]}>Workplace</Text>
-                <View style={styles.chipWrap}>
-                  {workplaces.map((wp) => {
-                    const selected = wp.id === workplaceId;
-                    return (
-                      <Pressable
-                        key={wp.id}
-                        accessibilityRole="button"
-                        accessibilityState={{ selected }}
-                        onPress={() => {
-                          setWorkplaceId(wp.id);
-                          setRateInput(rateToInput(wp.hourlyRate));
-                        }}
-                        style={[styles.workplaceChip, chipStyle(selected)]}>
-                        <View
-                          style={[styles.dot, { backgroundColor: wp.color || theme.accent }]}
-                        />
-                        <Text
-                          style={[
-                            styles.chipText,
-                            { color: selected ? theme.accent : theme.text },
-                            selected && styles.chipTextSelected,
-                          ]}>
-                          {wp.name}
-                          {wp.hourlyRate ? ` (${currency}${wp.hourlyRate.toFixed(2)}/hr)` : ''}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-                {activeSchedule ? (
-                  <Pressable
-                    accessibilityRole="button"
-                    onPress={handleApplyUsualSchedule}
-                    style={styles.quickFill}>
-                    <Sparkles color={theme.accent} size={12} />
-                    <Text style={[styles.quickFillText, { color: theme.accent }]}>
-                      Quick fill regular schedule
-                    </Text>
-                  </Pressable>
-                ) : null}
-              </View>
-
-              {/* Date with quick select */}
-              <View style={styles.field}>
-                <View style={styles.fieldHeader}>
-                  <Text style={[styles.label, { color: theme.text }]}>Date</Text>
-                  <View style={styles.quickDates}>
-                    {(
-                      [
-                        ['Today', todayStr],
-                        ['Yesterday', yesterdayStr],
-                      ] as const
-                    ).map(([label, value]) => {
-                      const selected = date === value;
-                      return (
-                        <Pressable
-                          key={label}
-                          accessibilityRole="button"
-                          onPress={() => setDate(value)}
-                          style={[
-                            styles.quickDate,
-                            selected && { backgroundColor: theme.accentSoft },
-                          ]}>
-                          <Text
-                            style={[
-                              styles.quickDateText,
-                              { color: selected ? theme.accent : theme.textSecondary },
-                              selected && styles.chipTextSelected,
-                            ]}>
-                            {label}
-                          </Text>
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-                </View>
-                <DateField value={date} onChange={setDate} accessibilityLabel="Shift date" />
-              </View>
-
-              {/* Start and end times */}
-              <View style={styles.row}>
-                <View style={[styles.field, styles.flex]}>
-                  <Text style={[styles.label, { color: theme.text }]}>Start Time</Text>
-                  <TimeField value={startTime} onChange={setStartTime} accessibilityLabel="Start time" />
-                </View>
-                <View style={[styles.field, styles.flex]}>
-                  <Text style={[styles.label, { color: theme.text }]}>End Time</Text>
-                  <TimeField value={endTime} onChange={setEndTime} accessibilityLabel="End time" />
-                </View>
-              </View>
-
-              {isOvernight ? (
-                <View style={[styles.overnight, { backgroundColor: theme.accentSoft }]}>
-                  <Clock color={theme.accent} size={14} />
-                  <Text style={[styles.overnightText, { color: theme.accent }]}>
-                    Shift extends past midnight (+24h overnight shift)
-                  </Text>
-                </View>
-              ) : null}
-
-              {/* Break selection pills */}
-              <View style={styles.field}>
-                <View style={styles.fieldHeader}>
-                  <Text style={[styles.label, { color: theme.text }]}>Unpaid Break</Text>
-                  <Text style={[styles.hint, { color: theme.textSecondary }]}>
-                    {breakMinutes > 0 ? `${breakMinutes} minutes` : 'No break'}
-                  </Text>
-                </View>
-                <View style={styles.pillRow}>
-                  {BREAK_OPTIONS.map((min) => {
-                    const selected = breakMinutes === min;
-                    return (
-                      <Pressable
-                        key={min}
-                        accessibilityRole="button"
-                        accessibilityState={{ selected }}
-                        onPress={() => setBreakMinutes(min)}
-                        style={[styles.pill, chipStyle(selected)]}>
-                        <Text
-                          style={[
-                            styles.chipText,
-                            { color: selected ? theme.accent : theme.textSecondary },
-                            selected && styles.chipTextSelected,
-                          ]}>
-                          {min === 0 ? 'None' : `${min}m`}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              </View>
-
-              {/* Pay rate, saved with the shift so later rate changes don't alter it */}
-              <View style={styles.field}>
-                <View style={styles.fieldHeader}>
-                  <Text style={[styles.label, { color: theme.text }]}>Hourly Rate</Text>
-                  <Text style={[styles.hint, { color: theme.textSecondary }]}>Saved with this shift</Text>
-                </View>
-                <View style={styles.amountWrap}>
-                  <Text style={[styles.currencySymbol, { color: theme.textSecondary }]}>
-                    {currency}
-                  </Text>
-                  <TextInput
-                    value={rateInput}
-                    onChangeText={setRateInput}
-                    placeholder="0.00"
-                    placeholderTextColor={theme.textSecondary}
-                    keyboardType="decimal-pad"
-                    style={[styles.input, styles.rateInput, inputStyle]}
-                  />
-                </View>
-              </View>
-
-              {/* Real-time calculation summary */}
-              <View
-                style={[
-                  styles.summary,
-                  { backgroundColor: theme.backgroundElement, borderColor: theme.border },
-                ]}>
-                <View>
-                  <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>
-                    Calculated Worked Time
-                  </Text>
-                  <Text style={[styles.summaryValue, { color: theme.text }]}>
-                    {formatDuration(workedMinutes)}
-                  </Text>
-                </View>
-                {hourlyRate > 0 ? (
-                  <View style={styles.earnings}>
-                    <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>
-                      Est. Earnings
-                    </Text>
-                    <Text style={[styles.earningsValue, { color: theme.success }]}>
-                      {money(estimatedEarnings)}
-                    </Text>
-                  </View>
-                ) : null}
-              </View>
-
-              {/* Payment status */}
-              <View style={styles.field}>
-                <Text style={[styles.label, { color: theme.text }]}>Payment Status</Text>
-                <View style={styles.row}>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: paymentStatus === 'unpaid' }}
-                    onPress={() => setPaymentStatus('unpaid')}
-                    style={[
-                      styles.statusButton,
-                      styles.flex,
-                      paymentStatus === 'unpaid'
-                        ? { backgroundColor: theme.warningSoft, borderColor: theme.warning }
-                        : { backgroundColor: theme.surface, borderColor: theme.border },
-                    ]}>
-                    <Text
-                      style={[
-                        styles.statusText,
-                        { color: paymentStatus === 'unpaid' ? theme.warning : theme.textSecondary },
-                      ]}>
-                      ○ Unpaid
-                    </Text>
-                  </Pressable>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: paymentStatus === 'paid' }}
-                    onPress={() => setPaymentStatus('paid')}
-                    style={[
-                      styles.statusButton,
-                      styles.flex,
-                      paymentStatus === 'paid'
-                        ? { backgroundColor: theme.successSoft, borderColor: theme.success }
-                        : { backgroundColor: theme.surface, borderColor: theme.border },
-                    ]}>
-                    <Text
-                      style={[
-                        styles.statusText,
-                        { color: paymentStatus === 'paid' ? theme.success : theme.textSecondary },
-                      ]}>
-                      ● Paid
-                    </Text>
-                  </Pressable>
-                </View>
-
-                {paymentStatus === 'paid' ? (
-                  <View
-                    style={[
-                      styles.paidDateBox,
-                      { backgroundColor: theme.successSoft, borderColor: `${theme.success}55` },
-                    ]}>
-                    <Text style={[styles.paidDateLabel, { color: theme.success }]}>Paid Date</Text>
-                    <DateField value={paidDate} onChange={setPaidDate} accessibilityLabel="Paid date" />
-                  </View>
-                ) : null}
-              </View>
-
-              {/* Notes (optional) */}
-              <View style={styles.field}>
-                <Text style={[styles.label, { color: theme.text }]}>Notes (Optional)</Text>
-                <TextInput
-                  value={notes}
-                  onChangeText={setNotes}
-                  placeholder="e.g. Closing duties, cash register #2"
-                  placeholderTextColor={theme.textSecondary}
-                  style={[styles.input, inputStyle]}
-                />
-              </View>
-
-              {/* Submit */}
-              <Pressable
-                accessibilityRole="button"
-                onPress={handleSubmit}
-                style={({ pressed }) => [
-                  styles.saveButton,
-                  { backgroundColor: pressed ? theme.accentPressed : theme.accent },
-                ]}>
-                <Check color={theme.onAccent} size={16} />
-                <Text style={[styles.saveText, { color: theme.onAccent }]}>Save Shift</Text>
-              </Pressable>
-            </ScrollView>
+        {/* Start and end times */}
+        <View style={styles.row}>
+          <View style={[styles.field, styles.flex]}>
+            <Text style={[styles.label, { color: theme.text }]}>Start Time</Text>
+            <TimeField value={startTime} onChange={setStartTime} accessibilityLabel="Start time" />
+          </View>
+          <View style={[styles.field, styles.flex]}>
+            <Text style={[styles.label, { color: theme.text }]}>End Time</Text>
+            <TimeField value={endTime} onChange={setEndTime} accessibilityLabel="End time" />
           </View>
         </View>
-      </KeyboardAvoidingView>
-    </Modal>
+
+        {isOvernight ? (
+          <View style={[styles.overnight, { backgroundColor: theme.accentSoft }]}>
+            <Clock color={theme.accent} size={14} />
+            <Text style={[styles.overnightText, { color: theme.accent }]}>
+              Shift extends past midnight (+24h overnight shift)
+            </Text>
+          </View>
+        ) : null}
+
+        {/* Break selection pills */}
+        <View style={styles.field}>
+          <View style={styles.fieldHeader}>
+            <Text style={[styles.label, { color: theme.text }]}>Unpaid Break</Text>
+            <Text style={[styles.hint, { color: theme.textSecondary }]}>
+              {breakMinutes > 0 ? `${breakMinutes} minutes` : 'No break'}
+            </Text>
+          </View>
+          <View style={styles.pillRow}>
+            {BREAK_OPTIONS.map((min) => {
+              const selected = breakMinutes === min;
+              return (
+                <Pressable
+                  key={min}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected }}
+                  onPress={() => setBreakMinutes(min)}
+                  style={[styles.pill, chipStyle(selected)]}>
+                  <Text
+                    style={[
+                      styles.chipText,
+                      { color: selected ? theme.accent : theme.textSecondary },
+                      selected && styles.chipTextSelected,
+                    ]}>
+                    {min === 0 ? 'None' : `${min}m`}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* Pay rate, saved with the shift so later rate changes don't alter it */}
+        <View style={styles.field}>
+          <View style={styles.fieldHeader}>
+            <Text style={[styles.label, { color: theme.text }]}>Hourly Rate</Text>
+            <Text style={[styles.hint, { color: theme.textSecondary }]}>Saved with this shift</Text>
+          </View>
+          <View style={styles.amountWrap}>
+            <Text style={[styles.currencySymbol, { color: theme.textSecondary }]}>{currency}</Text>
+            <TextInput
+              value={rateInput}
+              onChangeText={setRateInput}
+              placeholder="0.00"
+              placeholderTextColor={theme.textSecondary}
+              keyboardType="decimal-pad"
+              style={[styles.input, styles.rateInput, inputStyle]}
+            />
+          </View>
+        </View>
+
+        {/* Real-time calculation summary */}
+        <View
+          style={[
+            styles.summary,
+            { backgroundColor: theme.backgroundElement, borderColor: theme.border },
+          ]}>
+          <View>
+            <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>
+              Calculated Worked Time
+            </Text>
+            <Text style={[styles.summaryValue, { color: theme.text }]}>
+              {formatDuration(workedMinutes)}
+            </Text>
+          </View>
+          {hourlyRate > 0 ? (
+            <View style={styles.earnings}>
+              <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>
+                Est. Earnings
+              </Text>
+              <Text style={[styles.earningsValue, { color: theme.success }]}>
+                {money(estimatedEarnings)}
+              </Text>
+            </View>
+          ) : null}
+        </View>
+
+        {/* Payment status */}
+        <View style={styles.field}>
+          <Text style={[styles.label, { color: theme.text }]}>Payment Status</Text>
+          <View style={styles.row}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ selected: paymentStatus === 'unpaid' }}
+              onPress={() => setPaymentStatus('unpaid')}
+              style={[
+                styles.statusButton,
+                styles.flex,
+                paymentStatus === 'unpaid'
+                  ? { backgroundColor: theme.warningSoft, borderColor: theme.warning }
+                  : { backgroundColor: theme.surface, borderColor: theme.border },
+              ]}>
+              <Text
+                style={[
+                  styles.statusText,
+                  { color: paymentStatus === 'unpaid' ? theme.warning : theme.textSecondary },
+                ]}>
+                ○ Unpaid
+              </Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ selected: paymentStatus === 'paid' }}
+              onPress={() => setPaymentStatus('paid')}
+              style={[
+                styles.statusButton,
+                styles.flex,
+                paymentStatus === 'paid'
+                  ? { backgroundColor: theme.successSoft, borderColor: theme.success }
+                  : { backgroundColor: theme.surface, borderColor: theme.border },
+              ]}>
+              <Text
+                style={[
+                  styles.statusText,
+                  { color: paymentStatus === 'paid' ? theme.success : theme.textSecondary },
+                ]}>
+                ● Paid
+              </Text>
+            </Pressable>
+          </View>
+
+          {paymentStatus === 'paid' ? (
+            <View
+              style={[
+                styles.paidDateBox,
+                { backgroundColor: theme.successSoft, borderColor: `${theme.success}55` },
+              ]}>
+              <Text style={[styles.paidDateLabel, { color: theme.success }]}>Paid Date</Text>
+              <DateField value={paidDate} onChange={setPaidDate} accessibilityLabel="Paid date" />
+            </View>
+          ) : null}
+        </View>
+
+        {/* Notes (optional) */}
+        <View style={styles.field}>
+          <Text style={[styles.label, { color: theme.text }]}>Notes (Optional)</Text>
+          <TextInput
+            value={notes}
+            onChangeText={setNotes}
+            placeholder="e.g. Closing duties, cash register #2"
+            placeholderTextColor={theme.textSecondary}
+            style={[styles.input, inputStyle]}
+          />
+        </View>
+
+        {/* Submit */}
+        <Pressable
+          accessibilityRole="button"
+          onPress={handleSubmit}
+          style={({ pressed }) => [
+            styles.saveButton,
+            { backgroundColor: pressed ? theme.accentPressed : theme.accent },
+          ]}>
+          <Check color={theme.onAccent} size={16} />
+          <Text style={[styles.saveText, { color: theme.onAccent }]}>Save Shift</Text>
+        </Pressable>
+      </ScrollView>
+    </BottomSheet>
   );
 };
 
 const styles = StyleSheet.create({
   flex: {
     flex: 1,
-  },
-  backdrop: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  sheet: {
-    width: '100%',
-    maxWidth: 512,
-    maxHeight: '92%',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    borderWidth: 1,
-    overflow: 'hidden',
   },
   header: {
     flexDirection: 'row',
@@ -744,3 +754,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+
+export const AddShiftModal: React.FC<AddShiftModalProps> = ({ isOpen, ...props }) =>
+  isOpen ? <AddShiftForm {...props} /> : null;

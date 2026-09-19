@@ -4,6 +4,7 @@ import {
   KeyboardAvoidingView,
   Modal,
   Pressable,
+  FlatList,
   ScrollView,
   StyleSheet,
   Text,
@@ -17,14 +18,21 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { PaymentStatusBadge } from '@/components/common/PaymentStatusBadge';
 import { BottomTabInset } from '@/constants/theme';
 import { useFormat } from '@/hooks/use-format';
+import { ListSeparator } from '@/components/common/list-separator';
+import { SegmentedControl } from '@/components/common/SegmentedControl';
+import { useRefreshControl } from '@/components/common/refresh-control';
 import { useTheme } from '@/hooks/use-theme';
-import { PayPeriod, Shift, Workplace } from '@/types';
-import { formatDate, formatDuration, shiftEarnings, toLocalDateString } from '@/utils/timeCalculations';
+import { Shift, Workplace } from '@/types';
+import {
+  formatDate,
+  formatDuration,
+  shiftEarnings,
+  toLocalDateString,
+} from '@/utils/timeCalculations';
 
 interface PaymentTrackingScreenProps {
   workplaces: Workplace[];
   shifts: Shift[];
-  payPeriods: PayPeriod[];
   onBack: () => void;
   onUpdateShiftStatus: (
     shiftId: string,
@@ -33,6 +41,8 @@ interface PaymentTrackingScreenProps {
     actualPaidAmount?: number,
   ) => void;
   onSelectShift: (shift: Shift) => void;
+  /** Pull-to-refresh handler (syncs with the cloud). Omit to turn the gesture off. */
+  onRefresh?: () => Promise<void>;
 }
 
 type StatusFilter = 'unpaid' | 'paid' | 'all';
@@ -40,6 +50,7 @@ type StatusFilter = 'unpaid' | 'paid' | 'all';
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 export const PaymentTrackingScreen: React.FC<PaymentTrackingScreenProps> = ({
+  onRefresh,
   workplaces,
   shifts,
   onBack,
@@ -47,6 +58,7 @@ export const PaymentTrackingScreen: React.FC<PaymentTrackingScreenProps> = ({
   onSelectShift,
 }) => {
   const theme = useTheme();
+  const refreshControl = useRefreshControl(onRefresh);
   const { money, time, currency } = useFormat();
   const insets = useSafeAreaInsets();
 
@@ -123,9 +135,7 @@ export const PaymentTrackingScreen: React.FC<PaymentTrackingScreenProps> = ({
   const currentWp = activePayModalShift
     ? workplaces.find((w) => w.id === activePayModalShift.workplaceId)
     : null;
-  const currentExpected = activePayModalShift
-    ? shiftEarnings(activePayModalShift, currentWp)
-    : 0;
+  const currentExpected = activePayModalShift ? shiftEarnings(activePayModalShift, currentWp) : 0;
 
   const inputStyle = {
     backgroundColor: theme.surface,
@@ -141,138 +151,140 @@ export const PaymentTrackingScreen: React.FC<PaymentTrackingScreenProps> = ({
 
   return (
     <>
-      <ScrollView
+      <FlatList
+        data={filteredShifts}
+        keyExtractor={(shift) => shift.id}
+        refreshControl={refreshControl}
+        ItemSeparatorComponent={ListSeparator}
         contentContainerStyle={[
           styles.content,
           { paddingTop: insets.top + 8, paddingBottom: BottomTabInset + insets.bottom + 16 },
-        ]}>
-        {/* Top header */}
-        <View style={styles.header}>
-          <Pressable
-            accessibilityRole="button"
-            onPress={onBack}
-            hitSlop={8}
-            style={styles.backButton}>
-            <ArrowLeft color={theme.textSecondary} size={16} />
-            <Text style={[styles.backText, { color: theme.textSecondary }]}>Dashboard</Text>
-          </Pressable>
-          <Text style={[styles.headerTitle, { color: theme.text }]}>Payment Tracking</Text>
-          <View style={styles.headerSpacer} />
-        </View>
-
-        {/* Prominent unpaid hero card */}
-        <View
-          style={[
-            styles.hero,
-            { backgroundColor: theme.warningSoft, borderColor: `${theme.warning}66` },
-          ]}>
-          <View style={styles.heroLabel}>
-            <Clock color={theme.warning} size={16} />
-            <Text style={[styles.heroLabelText, { color: theme.warning }]}>Unpaid Balance</Text>
-          </View>
-
-          <View style={styles.heroRow}>
-            <View style={styles.flex}>
-              <Text style={[styles.heroValue, { color: theme.text }]}>
-                {formatDuration(stats.unpaidMinutes)}
-              </Text>
-              <Text style={[styles.heroSub, { color: theme.warning }]}>
-                Estimated unpaid: {money(stats.unpaidEarnings)}
-              </Text>
+        ]}
+        ListHeaderComponent={
+          <View style={styles.headerBlock}>
+            {/* Top header */}
+            <View style={styles.header}>
+              <Pressable
+                accessibilityRole="button"
+                onPress={onBack}
+                hitSlop={8}
+                style={styles.backButton}
+              >
+                <ArrowLeft color={theme.textSecondary} size={16} />
+                <Text style={[styles.backText, { color: theme.textSecondary }]}>Dashboard</Text>
+              </Pressable>
+              <Text style={[styles.headerTitle, { color: theme.text }]}>Payment Tracking</Text>
+              <View style={styles.headerSpacer} />
             </View>
 
-            <View style={styles.right}>
-              <Text style={[styles.smallLabel, { color: theme.textSecondary }]}>Paid to date</Text>
-              <Text style={[styles.paidToDate, { color: theme.success }]}>
-                {money(stats.paidEarnings)}
-              </Text>
+            {/* Prominent unpaid hero card */}
+            <View
+              style={[
+                styles.hero,
+                { backgroundColor: theme.warningSoft, borderColor: `${theme.warning}66` },
+              ]}
+            >
+              <View style={styles.heroLabel}>
+                <Clock color={theme.warning} size={16} />
+                <Text style={[styles.heroLabelText, { color: theme.warning }]}>Unpaid Balance</Text>
+              </View>
+
+              <View style={styles.heroRow}>
+                <View style={styles.flex}>
+                  <Text style={[styles.heroValue, { color: theme.text }]}>
+                    {formatDuration(stats.unpaidMinutes)}
+                  </Text>
+                  <Text style={[styles.heroSub, { color: theme.warning }]}>
+                    Estimated unpaid: {money(stats.unpaidEarnings)}
+                  </Text>
+                </View>
+
+                <View style={styles.right}>
+                  <Text style={[styles.smallLabel, { color: theme.textSecondary }]}>
+                    Paid to date
+                  </Text>
+                  <Text style={[styles.paidToDate, { color: theme.success }]}>
+                    {money(stats.paidEarnings)}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {/* 3-way metrics bar: total worked | unpaid | paid */}
+            <View
+              style={[
+                styles.metrics,
+                { backgroundColor: theme.surface, borderColor: theme.border },
+              ]}
+            >
+              <View style={styles.flex}>
+                <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>
+                  Total Worked
+                </Text>
+                <Text style={[styles.metricValue, { color: theme.text }]}>
+                  {formatDuration(stats.totalMinutesWorked)}
+                </Text>
+              </View>
+              <View style={styles.flex}>
+                <Text style={[styles.metricLabel, { color: theme.warning }]}>Unpaid</Text>
+                <Text style={[styles.metricValue, { color: theme.warning }]}>
+                  {formatDuration(stats.unpaidMinutes)}
+                </Text>
+              </View>
+              <View style={styles.flex}>
+                <Text style={[styles.metricLabel, { color: theme.success }]}>Paid</Text>
+                <Text style={[styles.metricValue, { color: theme.success }]}>
+                  {formatDuration(stats.paidMinutes)}
+                </Text>
+              </View>
+            </View>
+
+            {/* Filter tabs */}
+            <View style={styles.filters}>
+              <SegmentedControl
+                fill
+                options={statusTabs.map((tab) => ({ value: tab.key, label: tab.label }))}
+                value={filter}
+                onChange={setFilter}
+              />
+
+              {/* Workplace filter pills */}
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.pills}
+              >
+                {[{ id: 'all', name: 'All Workplaces' }, ...workplaces].map((wp) => {
+                  const selected = selectedWpFilter === wp.id;
+                  return (
+                    <Pressable
+                      key={wp.id}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected }}
+                      onPress={() => setSelectedWpFilter(wp.id)}
+                      style={[
+                        styles.pill,
+                        selected
+                          ? { backgroundColor: theme.text, borderColor: theme.text }
+                          : { backgroundColor: theme.surface, borderColor: theme.border },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.pillText,
+                          { color: selected ? theme.background : theme.textSecondary },
+                        ]}
+                      >
+                        {wp.name}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
             </View>
           </View>
-        </View>
-
-        {/* 3-way metrics bar: total worked | unpaid | paid */}
-        <View
-          style={[styles.metrics, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-          <View style={styles.flex}>
-            <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Total Worked</Text>
-            <Text style={[styles.metricValue, { color: theme.text }]}>
-              {formatDuration(stats.totalMinutesWorked)}
-            </Text>
-          </View>
-          <View style={styles.flex}>
-            <Text style={[styles.metricLabel, { color: theme.warning }]}>Unpaid</Text>
-            <Text style={[styles.metricValue, { color: theme.warning }]}>
-              {formatDuration(stats.unpaidMinutes)}
-            </Text>
-          </View>
-          <View style={styles.flex}>
-            <Text style={[styles.metricLabel, { color: theme.success }]}>Paid</Text>
-            <Text style={[styles.metricValue, { color: theme.success }]}>
-              {formatDuration(stats.paidMinutes)}
-            </Text>
-          </View>
-        </View>
-
-        {/* Filter tabs */}
-        <View style={styles.filters}>
-          <View style={[styles.segmented, { backgroundColor: theme.backgroundElement }]}>
-            {statusTabs.map((tab) => {
-              const selected = filter === tab.key;
-              return (
-                <Pressable
-                  key={tab.key}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected }}
-                  onPress={() => setFilter(tab.key)}
-                  style={[styles.segment, selected && { backgroundColor: theme.surface }]}>
-                  <Text
-                    numberOfLines={1}
-                    style={[
-                      styles.segmentText,
-                      { color: selected ? theme.text : theme.textSecondary },
-                      selected && styles.segmentTextSelected,
-                    ]}>
-                    {tab.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-
-          {/* Workplace filter pills */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.pills}>
-            {[{ id: 'all', name: 'All Workplaces' }, ...workplaces].map((wp) => {
-              const selected = selectedWpFilter === wp.id;
-              return (
-                <Pressable
-                  key={wp.id}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected }}
-                  onPress={() => setSelectedWpFilter(wp.id)}
-                  style={[
-                    styles.pill,
-                    selected
-                      ? { backgroundColor: theme.text, borderColor: theme.text }
-                      : { backgroundColor: theme.surface, borderColor: theme.border },
-                  ]}>
-                  <Text
-                    style={[
-                      styles.pillText,
-                      { color: selected ? theme.background : theme.textSecondary },
-                    ]}>
-                    {wp.name}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-        </View>
-
-        {/* Shifts list with quick mark-paid action */}
-        {filteredShifts.length === 0 ? (
+        }
+        ListEmptyComponent={
           <EmptyState
             type="unpaid"
             title={filter === 'unpaid' ? "You're all caught up" : 'No shifts found'}
@@ -282,92 +294,87 @@ export const PaymentTrackingScreen: React.FC<PaymentTrackingScreenProps> = ({
                 : 'Try changing your filters.'
             }
           />
-        ) : (
-          <View style={styles.list}>
-            {filteredShifts.map((shift) => {
-              const wp = workplaces.find((w) => w.id === shift.workplaceId);
-              const earnings = shiftEarnings(shift, wp);
-              const isUnpaid = shift.paymentStatus === 'unpaid';
+        }
+        renderItem={({ item: shift }) => {
+          const wp = workplaces.find((w) => w.id === shift.workplaceId);
+          const earnings = shiftEarnings(shift, wp);
+          const isUnpaid = shift.paymentStatus === 'unpaid';
 
-              return (
-                <View
-                  key={shift.id}
-                  style={[
-                    styles.shiftCard,
-                    { backgroundColor: theme.surface, borderColor: theme.border },
-                  ]}>
+          return (
+            <View
+              key={shift.id}
+              style={[
+                styles.shiftCard,
+                { backgroundColor: theme.surface, borderColor: theme.border },
+              ]}
+            >
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => onSelectShift(shift)}
+                style={styles.shiftTop}
+              >
+                <View style={styles.flex}>
+                  <View style={styles.wpRow}>
+                    <View style={[styles.dot, { backgroundColor: wp?.color || theme.accent }]} />
+                    <Text numberOfLines={1} style={[styles.wpName, { color: theme.text }]}>
+                      {wp?.name || 'Workplace'}
+                    </Text>
+                  </View>
+                  <Text style={[styles.shiftMeta, { color: theme.textSecondary }]}>
+                    {formatDate(shift.date, 'medium')} · {time(shift.startTime)} –{' '}
+                    {time(shift.endTime)}
+                  </Text>
+                </View>
+
+                <View style={styles.right}>
+                  <Text style={[styles.shiftDuration, { color: theme.text }]}>
+                    {formatDuration(shift.workedMinutes)}
+                  </Text>
+                  <Text style={[styles.shiftEarnings, { color: theme.textSecondary }]}>
+                    {money(earnings)}
+                  </Text>
+                </View>
+              </Pressable>
+
+              <View style={[styles.shiftBottom, { borderTopColor: theme.border }]}>
+                <View style={styles.statusRow}>
+                  <PaymentStatusBadge status={shift.paymentStatus} size="sm" />
+                  {shift.paymentStatus === 'paid' && shift.actualPaidAmount !== undefined ? (
+                    <Text style={[styles.received, { color: theme.textSecondary }]}>
+                      Recv: {money(shift.actualPaidAmount)}
+                    </Text>
+                  ) : null}
+                </View>
+
+                {isUnpaid ? (
                   <Pressable
                     accessibilityRole="button"
-                    onPress={() => onSelectShift(shift)}
-                    style={styles.shiftTop}>
-                    <View style={styles.flex}>
-                      <View style={styles.wpRow}>
-                        <View
-                          style={[styles.dot, { backgroundColor: wp?.color || theme.accent }]}
-                        />
-                        <Text
-                          numberOfLines={1}
-                          style={[styles.wpName, { color: theme.text }]}>
-                          {wp?.name || 'Workplace'}
-                        </Text>
-                      </View>
-                      <Text style={[styles.shiftMeta, { color: theme.textSecondary }]}>
-                        {formatDate(shift.date, 'medium')} · {time(shift.startTime)} –{' '}
-                        {time(shift.endTime)}
-                      </Text>
-                    </View>
-
-                    <View style={styles.right}>
-                      <Text style={[styles.shiftDuration, { color: theme.text }]}>
-                        {formatDuration(shift.workedMinutes)}
-                      </Text>
-                      <Text style={[styles.shiftEarnings, { color: theme.textSecondary }]}>
-                        {money(earnings)}
-                      </Text>
-                    </View>
+                    onPress={() => handleOpenMarkPaid(shift)}
+                    style={({ pressed }) => [
+                      styles.markPaid,
+                      { backgroundColor: theme.success },
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    <Check color={theme.onAccent} size={14} />
+                    <Text style={[styles.markPaidText, { color: theme.onAccent }]}>Mark Paid</Text>
                   </Pressable>
-
-                  <View style={[styles.shiftBottom, { borderTopColor: theme.border }]}>
-                    <View style={styles.statusRow}>
-                      <PaymentStatusBadge status={shift.paymentStatus} size="sm" />
-                      {shift.paymentStatus === 'paid' && shift.actualPaidAmount !== undefined ? (
-                        <Text style={[styles.received, { color: theme.textSecondary }]}>
-                          Recv: {money(shift.actualPaidAmount)}
-                        </Text>
-                      ) : null}
-                    </View>
-
-                    {isUnpaid ? (
-                      <Pressable
-                        accessibilityRole="button"
-                        onPress={() => handleOpenMarkPaid(shift)}
-                        style={({ pressed }) => [
-                          styles.markPaid,
-                          { backgroundColor: theme.success },
-                          pressed && styles.pressed,
-                        ]}>
-                        <Check color={theme.onAccent} size={14} />
-                        <Text style={[styles.markPaidText, { color: theme.onAccent }]}>
-                          Mark Paid
-                        </Text>
-                      </Pressable>
-                    ) : (
-                      <Pressable
-                        accessibilityRole="button"
-                        onPress={() => onUpdateShiftStatus(shift.id, 'unpaid')}
-                        hitSlop={8}>
-                        <Text style={[styles.markUnpaid, { color: theme.textSecondary }]}>
-                          Mark Unpaid
-                        </Text>
-                      </Pressable>
-                    )}
-                  </View>
-                </View>
-              );
-            })}
-          </View>
-        )}
-      </ScrollView>
+                ) : (
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => onUpdateShiftStatus(shift.id, 'unpaid')}
+                    hitSlop={8}
+                  >
+                    <Text style={[styles.markUnpaid, { color: theme.textSecondary }]}>
+                      Mark Unpaid
+                    </Text>
+                  </Pressable>
+                )}
+              </View>
+            </View>
+          );
+        }}
+      />
 
       {/* Mark as paid dialog */}
       <Modal
@@ -375,12 +382,19 @@ export const PaymentTrackingScreen: React.FC<PaymentTrackingScreenProps> = ({
         transparent
         animationType="fade"
         statusBarTranslucent
-        onRequestClose={() => setActivePayModalShift(null)}>
+        onRequestClose={() => setActivePayModalShift(null)}
+      >
         <KeyboardAvoidingView behavior="padding" style={styles.flex}>
           <View style={styles.backdrop}>
             {/* Tapping outside the sheet closes it. It is a sibling rather than a parent of the sheet so it never competes with scrolling inside. */}
-            <Pressable accessible={false} style={StyleSheet.absoluteFill} onPress={() => setActivePayModalShift(null)} />
-            <View style={[styles.dialog, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+            <Pressable
+              accessible={false}
+              style={StyleSheet.absoluteFill}
+              onPress={() => setActivePayModalShift(null)}
+            />
+            <View
+              style={[styles.dialog, { backgroundColor: theme.surface, borderColor: theme.border }]}
+            >
               <View style={styles.dialogHeader}>
                 <View style={styles.flex}>
                   <Text style={[styles.dialogTitle, { color: theme.text }]}>
@@ -395,7 +409,8 @@ export const PaymentTrackingScreen: React.FC<PaymentTrackingScreenProps> = ({
                 <Pressable
                   accessibilityLabel="Close"
                   onPress={() => setActivePayModalShift(null)}
-                  hitSlop={8}>
+                  hitSlop={8}
+                >
                   <X color={theme.textSecondary} size={16} />
                 </Pressable>
               </View>
@@ -442,7 +457,8 @@ export const PaymentTrackingScreen: React.FC<PaymentTrackingScreenProps> = ({
                       backgroundColor: pressed ? theme.backgroundElement : 'transparent',
                       borderColor: theme.border,
                     },
-                  ]}>
+                  ]}
+                >
                   <Text style={[styles.dialogButtonText, { color: theme.textSecondary }]}>
                     Cancel
                   </Text>
@@ -455,13 +471,15 @@ export const PaymentTrackingScreen: React.FC<PaymentTrackingScreenProps> = ({
                     styles.dialogButton,
                     { backgroundColor: theme.success, borderColor: theme.success },
                     (pressed || !isPaidDateValid) && styles.pressed,
-                  ]}>
+                  ]}
+                >
                   <Text
                     style={[
                       styles.dialogButtonText,
                       styles.dialogButtonStrong,
                       { color: theme.onAccent },
-                    ]}>
+                    ]}
+                  >
                     Save Payment
                   </Text>
                 </Pressable>
@@ -486,7 +504,6 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 16,
-    gap: 16,
   },
   header: {
     flexDirection: 'row',
@@ -565,32 +582,13 @@ const styles = StyleSheet.create({
   filters: {
     gap: 8,
   },
-  segmented: {
-    flexDirection: 'row',
-    padding: 4,
-    borderRadius: 12,
-  },
-  segment: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 4,
-    borderRadius: 8,
-  },
-  segmentText: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  segmentTextSelected: {
-    fontWeight: '600',
-  },
   pills: {
     flexDirection: 'row',
     gap: 6,
   },
   pill: {
     paddingHorizontal: 12,
-    paddingVertical: 4,
+    paddingVertical: 8,
     borderRadius: 999,
     borderWidth: 1,
   },
@@ -598,8 +596,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
   },
-  list: {
-    gap: 8,
+  headerBlock: {
+    gap: 16,
+    marginBottom: 16,
   },
   shiftCard: {
     padding: 14,

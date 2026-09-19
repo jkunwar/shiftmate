@@ -48,6 +48,7 @@ export function AppModals() {
         isOpen={shiftEditor.isOpen}
         initialShift={shiftEditor.shift}
         workplaces={workplaces}
+        existingShifts={shifts}
         defaultWorkplaceId={shiftEditor.workplaceId}
         onClose={closeShiftEditor}
         onSave={(shiftData) => {
