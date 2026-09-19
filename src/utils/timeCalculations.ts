@@ -320,3 +320,19 @@ export function findOverlappingShift(
     return start < otherEnd && otherStart < end;
   });
 }
+
+export interface PayBasis {
+  workplaceId: string;
+  workedMinutes: number;
+  /** The rate the shift is (or would be) paid at, already resolved. */
+  hourlyRate: number;
+}
+
+/** True when an edit changes what a shift should earn: its workplace, hours or rate. */
+export function changesPay(before: PayBasis, after: PayBasis): boolean {
+  return (
+    before.workplaceId !== after.workplaceId ||
+    before.workedMinutes !== after.workedMinutes ||
+    Math.round(before.hourlyRate * 100) !== Math.round(after.hourlyRate * 100)
+  );
+}

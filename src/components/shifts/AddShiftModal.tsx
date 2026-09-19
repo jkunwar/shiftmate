@@ -19,6 +19,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { PaymentStatus, Shift, Workplace } from '@/types';
 import {
   calculateWorkedMinutes,
+  changesPay,
   findOverlappingShift,
   formatDate,
   formatDuration,
@@ -202,32 +203,65 @@ const AddShiftForm: React.FC<Omit<AddShiftModalProps, 'isOpen'>> = ({
         hourlyRate,
         paymentStatus,
         paidDate: paymentStatus === 'paid' ? paidDate : undefined,
+        // Editing must not wipe the amount that was recorded when the shift was marked paid
+        actualPaidAmount: paymentStatus === 'paid' ? initialShift?.actualPaidAmount : undefined,
         notes: notes.trim() ? notes.trim() : undefined,
       });
       onClose();
     };
 
     // Two shifts at the same time is usually a slip, but sometimes intended, so ask instead of blocking
-    const overlapping = findOverlappingShift(
-      { date, startTime, endTime },
-      existingShifts,
-      initialShift?.id,
-    );
-    if (overlapping && Platform.OS !== 'web') {
-      const where =
-        workplaces.find((w) => w.id === overlapping.workplaceId)?.name ?? 'another shift';
+    const saveUnlessOverlapping = () => {
+      const overlapping = findOverlappingShift(
+        { date, startTime, endTime },
+        existingShifts,
+        initialShift?.id,
+      );
+      if (overlapping && Platform.OS !== 'web') {
+        const where =
+          workplaces.find((w) => w.id === overlapping.workplaceId)?.name ?? 'another shift';
+        Alert.alert(
+          'Overlapping shift',
+          `This overlaps ${where} (${time(overlapping.startTime)} – ${time(overlapping.endTime)}) on ${formatDate(overlapping.date, 'medium')}. Save it anyway?`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Save Anyway', onPress: save },
+          ],
+        );
+        return;
+      }
+      save();
+    };
+
+    // A paid shift whose hours, rate or workplace change no longer matches what was paid
+    if (
+      initialShift?.paymentStatus === 'paid' &&
+      paymentStatus === 'paid' &&
+      Platform.OS !== 'web' &&
+      changesPay(
+        {
+          workplaceId: initialShift.workplaceId,
+          workedMinutes: initialShift.workedMinutes,
+          hourlyRate:
+            initialShift.hourlyRate ??
+            workplaces.find((w) => w.id === initialShift.workplaceId)?.hourlyRate ??
+            0,
+        },
+        { workplaceId, workedMinutes, hourlyRate },
+      )
+    ) {
       Alert.alert(
-        'Overlapping shift',
-        `This overlaps ${where} (${time(overlapping.startTime)} – ${time(overlapping.endTime)}) on ${formatDate(overlapping.date, 'medium')}. Save it anyway?`,
+        'Change a paid shift?',
+        'This shift is marked paid. Changing its hours, rate or workplace updates the estimate, but the amount you received stays as it was.',
         [
           { text: 'Cancel', style: 'cancel' },
-          { text: 'Save Anyway', onPress: save },
+          { text: 'Save Changes', onPress: saveUnlessOverlapping },
         ],
       );
       return;
     }
 
-    save();
+    saveUnlessOverlapping();
   };
 
   const inputStyle = {
@@ -269,6 +303,19 @@ const AddShiftForm: React.FC<Omit<AddShiftModalProps, 'isOpen'>> = ({
       <ScrollView
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={[styles.body, { paddingBottom: 20 + insets.bottom }]}>
+        {initialShift?.paymentStatus === 'paid' ? (
+          <View
+            style={[
+              styles.banner,
+              { backgroundColor: theme.backgroundElement, borderColor: theme.border },
+            ]}>
+            <Text style={[styles.bannerText, { color: theme.textSecondary }]}>
+              This shift is marked paid. Changing its hours, rate or workplace won&apos;t change the amount
+              you received.
+            </Text>
+          </View>
+        ) : null}
+
         {errorMsg ? (
           <View
             style={[

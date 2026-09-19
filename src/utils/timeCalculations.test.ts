@@ -1,17 +1,5 @@
 import { shift, workplace } from '@/__fixtures__/shifts';
-import {
-  addDays,
-  calculateWorkedMinutes,
-  formatCurrency,
-  formatDuration,
-  findOverlappingShift,
-  formatTime,
-  generateTimesheetCSV,
-  groupShiftsByMonthAndWeek,
-  shiftEarnings,
-  toLocalDateString,
-  weekStartOf,
-} from './timeCalculations';
+import { addDays, calculateWorkedMinutes, formatCurrency, formatDuration, findOverlappingShift, formatTime, generateTimesheetCSV, groupShiftsByMonthAndWeek, shiftEarnings, toLocalDateString, weekStartOf, changesPay } from './timeCalculations';
 
 describe('calculateWorkedMinutes', () => {
   it('subtracts the break from a normal shift', () => {
@@ -178,5 +166,23 @@ describe('findOverlappingShift', () => {
     const night = [shift({ id: 'n', date: '2026-09-10', startTime: '22:00', endTime: '06:00' })];
     expect(findOverlappingShift({ date: '2026-09-11', startTime: '05:00', endTime: '09:00' }, night)?.id).toBe('n');
     expect(findOverlappingShift({ date: '2026-09-11', startTime: '06:00', endTime: '09:00' }, night)).toBeUndefined();
+  });
+});
+
+describe('changesPay', () => {
+  const base = { workplaceId: 'w1', workedMinutes: 480, hourlyRate: 20 };
+
+  it('is false when nothing pay-related changed', () => {
+    expect(changesPay(base, { ...base })).toBe(false);
+  });
+
+  it('is true when the hours, rate or workplace change', () => {
+    expect(changesPay(base, { ...base, workedMinutes: 450 })).toBe(true);
+    expect(changesPay(base, { ...base, hourlyRate: 21 })).toBe(true);
+    expect(changesPay(base, { ...base, workplaceId: 'w2' })).toBe(true);
+  });
+
+  it('ignores floating point noise in the rate', () => {
+    expect(changesPay(base, { ...base, hourlyRate: 20.000001 })).toBe(false);
   });
 });
