@@ -39,6 +39,30 @@ describe('resolveDateRange', () => {
     });
   });
 
+  it('resolves pay periods from the setting', () => {
+    const pay = { frequency: 'biweekly' as const, anchor: '2026-09-04' };
+    expect(resolveDateRange('this-pay-period', today, 'monday', custom, pay)).toEqual({
+      start: '2026-09-04',
+      end: '2026-09-17',
+      label: expect.stringContaining('This Pay Period ('),
+    });
+    expect(resolveDateRange('last-pay-period', today, 'monday', custom, pay)).toMatchObject({
+      start: '2026-08-21',
+      end: '2026-09-03',
+    });
+  });
+
+  it('falls back to this month when pay periods are not set up', () => {
+    expect(resolveDateRange('this-pay-period', today, 'monday', custom)).toMatchObject({
+      start: '2026-09-01',
+      end: '2026-09-30',
+    });
+    const off = { frequency: 'off' as const, anchor: '' };
+    expect(resolveDateRange('last-pay-period', today, 'monday', custom, off)).toMatchObject({
+      start: '2026-09-01',
+    });
+  });
+
   it('uses the custom dates as given', () => {
     expect(resolveDateRange('custom', today, 'monday', custom)).toEqual({
       ...custom,

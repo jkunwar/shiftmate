@@ -1,8 +1,16 @@
 import { Shift, UserPreferences, Workplace } from '@/types';
 import { DateRange, formatRange, getMonthRange, getWeekRange } from '@/utils/dateRanges';
+import { getPayPeriod, PayPeriodSetting } from '@/utils/payPeriods';
 import { shiftEarnings } from '@/utils/timeCalculations';
 
-export type DatePreset = 'this-week' | 'last-week' | 'this-month' | 'last-month' | 'custom';
+export type DatePreset =
+  | 'this-week'
+  | 'last-week'
+  | 'this-pay-period'
+  | 'last-pay-period'
+  | 'this-month'
+  | 'last-month'
+  | 'custom';
 export type PaymentFilter = 'all' | 'paid' | 'unpaid';
 
 /** A report's date range plus the label shown for it (and printed on exports). */
@@ -16,8 +24,17 @@ export function resolveDateRange(
   today: string,
   weekStartsOn: UserPreferences['weekStartsOn'],
   custom: DateRange,
+  payPeriod?: PayPeriodSetting,
 ): ReportRange {
   switch (preset) {
+    case 'this-pay-period':
+    case 'last-pay-period': {
+      const range = payPeriod && getPayPeriod(today, payPeriod, preset === 'this-pay-period' ? 0 : -1);
+      // Not set up (any more): fall back to the month so the report still has a range
+      if (!range) return resolveDateRange('this-month', today, weekStartsOn, custom);
+      const name = preset === 'this-pay-period' ? 'This Pay Period' : 'Last Pay Period';
+      return { ...range, label: `${name} (${formatRange(range)})` };
+    }
     case 'this-week': {
       const range = getWeekRange(today, weekStartsOn, 0);
       return { ...range, label: `This Week (${formatRange(range)})` };

@@ -10,6 +10,8 @@ import { DatePreset, PaymentFilter } from '@/utils/reportFilters';
 const DATE_PRESETS: { value: DatePreset; label: string }[] = [
   { value: 'this-week', label: 'This Week' },
   { value: 'last-week', label: 'Last Week' },
+  { value: 'this-pay-period', label: 'This Pay Period' },
+  { value: 'last-pay-period', label: 'Last Pay Period' },
   { value: 'this-month', label: 'This Month' },
   { value: 'last-month', label: 'Last Month' },
   { value: 'custom', label: 'Custom' },
@@ -22,6 +24,8 @@ const PAYMENT_FILTERS: { value: PaymentFilter; label: string }[] = [
 ];
 
 interface ReportFiltersProps {
+  /** Offer the pay-period presets; off until the user sets up how often they are paid. */
+  showPayPeriods: boolean;
   datePreset: DatePreset;
   onDatePresetChange: (preset: DatePreset) => void;
   customStart: string;
@@ -38,6 +42,7 @@ interface ReportFiltersProps {
 
 /** The date range, workplace and payment-status filters of a report. */
 export function ReportFilters({
+  showPayPeriods,
   datePreset,
   onDatePresetChange,
   customStart,
@@ -54,7 +59,11 @@ export function ReportFilters({
 
   return (
     <>
-      <ChipGroup options={DATE_PRESETS} value={datePreset} onChange={onDatePresetChange} />
+      <ChipGroup
+        options={showPayPeriods ? DATE_PRESETS : DATE_PRESETS.filter((p) => !p.value.endsWith('pay-period'))}
+        value={datePreset}
+        onChange={onDatePresetChange}
+      />
 
       {datePreset === 'custom' ? (
         <View

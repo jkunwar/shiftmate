@@ -107,7 +107,11 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     ),
   );
   const [preferences, setPreferences] = useState<UserPreferences>(() =>
-    readStored(STORAGE_KEYS.preferences, defaultPreferences()),
+    // Saved preferences from an older version lack newer keys, so fill those from the defaults
+    ({
+      ...defaultPreferences(),
+      ...readStored<Partial<UserPreferences>>(STORAGE_KEYS.preferences, {}),
+    }),
   );
   const [workplaces, setWorkplaces] = useState<Workplace[]>(() =>
     readStored(STORAGE_KEYS.workplaces, cloudMode ? [] : demoWorkplaces),

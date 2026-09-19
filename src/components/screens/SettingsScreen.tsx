@@ -8,6 +8,7 @@ import { AboutSection } from '@/components/settings/AboutSection';
 import { AccountActions } from '@/components/settings/AccountActions';
 import { AccountDetailsSection } from '@/components/settings/AccountDetailsSection';
 import { NotificationsSection } from '@/components/settings/NotificationsSection';
+import { PayPeriodSection } from '@/components/settings/PayPeriodSection';
 import { PreferencesSection } from '@/components/settings/PreferencesSection';
 import { ProfileSummary } from '@/components/settings/ProfileSummary';
 import { SectionCard } from '@/components/settings/SectionCard';
@@ -77,6 +78,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
       <ProfileSummary user={user} />
 
       <PreferencesSection preferences={preferences} onUpdatePreferences={onUpdatePreferences} />
+      <PayPeriodSection preferences={preferences} onUpdatePreferences={onUpdatePreferences} />
       <NotificationsSection preferences={preferences} onUpdatePreferences={onUpdatePreferences} />
       <AccountDetailsSection user={user} onUpdateUser={onUpdateUser} />
 

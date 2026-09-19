@@ -17,6 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useToday } from '@/hooks/use-today';
 import { Shift, User, Workplace } from '@/types';
 import { getMonthRange } from '@/utils/dateRanges';
+import { hasPayPeriods, PayPeriodSetting } from '@/utils/payPeriods';
 import {
   DatePreset,
   filterShifts,
@@ -33,6 +34,8 @@ interface ReportsScreenProps {
   onSelectShift: (shift: Shift) => void;
   /** Which day weeks start on in the shared summary and the PDF. Defaults to Monday. */
   weekStartsOn?: 'monday' | 'sunday';
+  /** How often the user is paid; enables the pay-period presets. */
+  payPeriod?: PayPeriodSetting;
   /** Pull-to-refresh handler (syncs with the cloud). Omit to turn the gesture off. */
   onRefresh?: () => Promise<void>;
 }
@@ -44,6 +47,7 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({
   shifts,
   onSelectShift,
   weekStartsOn = 'monday',
+  payPeriod,
 }) => {
   const theme = useTheme();
   const refreshControl = useRefreshControl(onRefresh);
@@ -61,8 +65,14 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({
 
   const dateRange = useMemo(
     () =>
-      resolveDateRange(datePreset, today, weekStartsOn, { start: customStart, end: customEnd }),
-    [datePreset, today, weekStartsOn, customStart, customEnd],
+      resolveDateRange(
+        datePreset,
+        today,
+        weekStartsOn,
+        { start: customStart, end: customEnd },
+        payPeriod,
+      ),
+    [datePreset, today, weekStartsOn, customStart, customEnd, payPeriod],
   );
 
   const filteredShifts = useMemo(
@@ -124,6 +134,7 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({
             </View>
 
             <ReportFilters
+              showPayPeriods={payPeriod ? hasPayPeriods(payPeriod) : false}
               datePreset={datePreset}
               onDatePresetChange={setDatePreset}
               customStart={customStart}

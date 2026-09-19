@@ -60,6 +60,9 @@ export interface MonthGroup {
   weeks: WeekGroup[];
 }
 
+/** How often the user is paid; 'off' means pay-period filters aren't used. */
+export type PayFrequency = 'off' | 'weekly' | 'biweekly' | 'semimonthly' | 'monthly';
+
 export interface UserPreferences {
   defaultHourlyRate: number;
   weekStartsOn: 'monday' | 'sunday';
@@ -69,4 +72,7 @@ export interface UserPreferences {
   shiftReminder: boolean;
   weeklyHoursReminder: boolean;
   unpaidHoursReminder: boolean;
+  payFrequency: PayFrequency;
+  /** YYYY-MM-DD of a day a pay period started on; weekly, bi-weekly and monthly cycles count from it. */
+  payAnchor: string;
 }

@@ -22,6 +22,8 @@ export const demoPreferences: UserPreferences = {
   shiftReminder: true,
   weeklyHoursReminder: true,
   unpaidHoursReminder: false,
+  payFrequency: 'off',
+  payAnchor: '',
 };
 
 export const demoWorkplaces: Workplace[] = [
