@@ -32,8 +32,8 @@ Without these the app runs in local-only mode with demo data and no sign-in.
 
 ### Supabase
 
-1. Run the SQL in `SUPABASE_SQL_SCHEMA` ([src/lib/supabase.ts](src/lib/supabase.ts)) in the SQL Editor.
-   It creates the tables, row-level security policies and the `delete_my_account()` function.
+1. Run [supabase/schema.sql](supabase/schema.sql) in the SQL Editor. It is safe to run again, so it also upgrades an older database.
+   It creates the tables, row-level security policies, data checks and the `delete_my_account()` function.
 2. Authentication → URL Configuration:
    - Site URL: `shiftmate://auth-callback`
    - Redirect URLs: `shiftmate://auth-callback` and, for Expo Go, `exp://**`
