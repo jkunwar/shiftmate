@@ -1,9 +1,11 @@
 import { X } from 'lucide-react-native';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Dialog } from '@/components/common/Dialog';
 import { DateField } from '@/components/common/DateTimeFields';
+import { FormField } from '@/components/common/FormField';
+import { MoneyInput } from '@/components/common/MoneyInput';
 import { FontSize } from '@/constants/theme';
 import { useFormat } from '@/hooks/use-format';
 import { useTheme } from '@/hooks/use-theme';
@@ -25,7 +27,7 @@ interface MarkPaidDialogProps {
 /** Records when a shift was paid and how much arrived. Mount it fresh for each shift. */
 export function MarkPaidDialog({ shift, workplace, onClose, onSave }: MarkPaidDialogProps) {
   const theme = useTheme();
-  const { money, currency } = useFormat();
+  const { money } = useFormat();
 
   const expected = shiftEarnings(shift, workplace);
   const [paidDate, setPaidDate] = useState(toLocalDateString());
@@ -51,38 +53,24 @@ export function MarkPaidDialog({ shift, workplace, onClose, onSave }: MarkPaidDi
         </Pressable>
       </View>
 
-      <View style={styles.field}>
-        <Text style={[styles.label, { color: theme.text }]}>Payment Date</Text>
+      <FormField label="Payment Date">
         <DateField
           value={paidDate}
           onChange={setPaidDate}
           invalid={!isDateValid}
           accessibilityLabel="Payment date"
         />
-      </View>
+      </FormField>
 
-      <View style={styles.field}>
-        <View style={styles.labelRow}>
-          <Text style={[styles.label, { color: theme.text }]}>Actual Amount Received</Text>
+      <FormField
+        label="Actual Amount Received"
+        headerRight={
           <Text style={[styles.expected, { color: theme.textSecondary }]}>
             Expected: {money(expected)}
           </Text>
-        </View>
-        <View style={styles.amountWrap}>
-          <Text style={[styles.currency, { color: theme.textSecondary }]}>{currency}</Text>
-          <TextInput
-            value={received}
-            onChangeText={setReceived}
-            placeholder={expected.toFixed(2)}
-            placeholderTextColor={theme.textSecondary}
-            keyboardType="decimal-pad"
-            style={[
-              styles.input,
-              { backgroundColor: theme.surface, borderColor: theme.border, color: theme.text },
-            ]}
-          />
-        </View>
-      </View>
+        }>
+        <MoneyInput value={received} onChangeText={setReceived} placeholder={expected.toFixed(2)} />
+      </FormField>
 
       <View style={styles.actions}>
         <Pressable
@@ -132,42 +120,8 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: FontSize.xs,
   },
-  field: {
-    gap: 4,
-  },
-  labelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 8,
-  },
-  label: {
-    flexShrink: 1,
-    fontSize: FontSize.xs,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-  },
   expected: {
     fontSize: FontSize.xs,
-  },
-  amountWrap: {
-    justifyContent: 'center',
-  },
-  currency: {
-    position: 'absolute',
-    left: 12,
-    zIndex: 1,
-    fontSize: FontSize.sm,
-    fontWeight: '700',
-  },
-  input: {
-    paddingHorizontal: 12,
-    paddingLeft: 28,
-    paddingVertical: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    fontSize: FontSize.sm,
-    fontWeight: '500',
   },
   actions: {
     flexDirection: 'row',
