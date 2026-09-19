@@ -68,11 +68,14 @@ export function PrimaryButton({
   label,
   loadingLabel,
   isLoading,
+  trailingIcon,
   onPress,
 }: {
   label: string;
   loadingLabel?: string;
   isLoading?: boolean;
+  /** An icon after the label, e.g. an arrow. */
+  trailingIcon?: React.ReactNode;
   onPress: () => void;
 }) {
   const theme = useTheme();
@@ -91,6 +94,7 @@ export function PrimaryButton({
       <Text style={[styles.primaryButtonText, { color: theme.onAccent }]}>
         {isLoading ? (loadingLabel ?? label) : label}
       </Text>
+      {isLoading ? null : trailingIcon}
     </Pressable>
   );
 }
