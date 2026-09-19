@@ -19,7 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DateField } from '@/components/common/DateTimeFields';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ShiftRow } from '@/components/shifts/ShiftRow';
-import { BottomTabInset } from '@/constants/theme';
+import { BottomTabInset, FontSize, ScreenTitle } from '@/constants/theme';
 import { useFormat } from '@/hooks/use-format';
 import { Chip } from '@/components/common/Chip';
 import { ListSeparator } from '@/components/common/list-separator';
@@ -220,7 +220,11 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({
     }
   };
 
+  // Nothing to export or share for an empty selection
+  const hasShifts = filteredShifts.length > 0;
+
   const handleExportCSV = async () => {
+    if (!hasShifts) return;
     const csvContent = generateTimesheetCSV(
       filteredShifts,
       workplaces,
@@ -243,6 +247,7 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({
   };
 
   const handleShare = async () => {
+    if (!hasShifts) return;
     const summaryText = buildShareText({
       workplaceName: activeWorkplace?.name || 'All Jobs',
       rangeLabel: dateRange.label,
@@ -261,6 +266,7 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({
   };
 
   const handleExportPDF = async () => {
+    if (!hasShifts) return;
     const html = buildTimesheetHtml({
       user,
       workplaces,
@@ -320,7 +326,7 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({
             {/* Header */}
             <View style={styles.header}>
               <View style={styles.headerText}>
-                <Text style={[styles.heading, { color: theme.text }]}>Reports & Timesheets</Text>
+                <Text style={[styles.heading, { color: theme.text }]}>Reports</Text>
                 <Text style={[styles.subheading, { color: theme.textSecondary }]}>
                   Generate and export employer-ready timesheets
                 </Text>
@@ -487,13 +493,21 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({
 
               {/* Actions: share, preview timesheet, export CSV */}
               <View style={styles.actions}>
-                <Pressable accessibilityRole="button" onPress={handleShare} style={secondaryButton}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{ disabled: !hasShifts }}
+                  disabled={!hasShifts}
+                  onPress={handleShare}
+                  style={(state) => [secondaryButton(state), !hasShifts && styles.disabled]}
+                >
                   <Share2 color={theme.text} size={14} />
                   <Text style={[styles.actionText, { color: theme.text }]}>Share</Text>
                 </Pressable>
 
                 <Pressable
                   accessibilityRole="button"
+                  accessibilityState={{ disabled: !hasShifts }}
+                  disabled={!hasShifts}
                   onPress={handleExportPDF}
                   style={({ pressed }) => [
                     styles.actionButton,
@@ -501,6 +515,7 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({
                       backgroundColor: pressed ? theme.accentPressed : theme.accent,
                       borderColor: 'transparent',
                     },
+                    !hasShifts && styles.disabled,
                   ]}
                 >
                   <Printer color={theme.onAccent} size={14} />
@@ -509,8 +524,10 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({
 
                 <Pressable
                   accessibilityRole="button"
+                  accessibilityState={{ disabled: !hasShifts }}
+                  disabled={!hasShifts}
                   onPress={handleExportCSV}
-                  style={secondaryButton}
+                  style={(state) => [secondaryButton(state), !hasShifts && styles.disabled]}
                 >
                   <Download color={theme.text} size={14} />
                   <Text style={[styles.actionText, { color: theme.text }]}>Export CSV</Text>
@@ -541,8 +558,9 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({
       {/* Toast notification */}
       {toastMessage ? (
         <View pointerEvents="none" style={[styles.toastWrap, { top: insets.top + 8 }]}>
-          <View style={styles.toast}>
-            <Text style={styles.toastText}>{toastMessage}</Text>
+          <View
+            style={[styles.toast, { backgroundColor: theme.hero, borderColor: theme.heroChip }]}>
+            <Text style={[styles.toastText, { color: theme.heroText }]}>{toastMessage}</Text>
           </View>
         </View>
       ) : null}
@@ -581,11 +599,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   heading: {
-    fontSize: 20,
-    fontWeight: '700',
+    ...ScreenTitle,
   },
   subheading: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
   },
   previewButton: {
     padding: 8,
@@ -607,7 +624,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   filterLabel: {
-    fontSize: 11,
+    fontSize: FontSize.xs,
     fontWeight: '600',
     textTransform: 'uppercase',
     marginBottom: 2,
@@ -625,13 +642,13 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   eyebrow: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.8,
   },
   heroTitle: {
-    fontSize: 18,
+    fontSize: FontSize.lg,
     fontWeight: '700',
   },
   fullForm: {
@@ -640,7 +657,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   fullFormText: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
     fontWeight: '600',
   },
   metrics: {
@@ -651,11 +668,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   metricLabel: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
     marginBottom: 2,
   },
   metricValue: {
-    fontSize: 16,
+    fontSize: FontSize.md,
     fontWeight: '700',
   },
   actions: {
@@ -673,8 +690,11 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
   },
+  disabled: {
+    opacity: 0.4,
+  },
   actionText: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
     fontWeight: '600',
   },
   headerBlock: {
@@ -693,14 +713,11 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: '#334155',
-    backgroundColor: '#0f172a',
     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
   },
   toastText: {
     textAlign: 'center',
-    color: '#ffffff',
-    fontSize: 12,
+    fontSize: FontSize.xs,
     fontWeight: '600',
   },
 });

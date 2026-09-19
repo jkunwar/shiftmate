@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 
 import { useTheme } from '@/hooks/use-theme';
+import { FontSize } from '@/constants/theme';
 
 const CONFIRM_WORD = 'DELETE';
 
@@ -173,19 +174,19 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   title: {
-    fontSize: 16,
+    fontSize: FontSize.md,
     fontWeight: '600',
     lineHeight: 22,
   },
   message: {
-    fontSize: 14,
+    fontSize: FontSize.sm,
     lineHeight: 22,
   },
   field: {
     gap: 4,
   },
   label: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
     fontWeight: '600',
     textTransform: 'uppercase',
   },
@@ -194,7 +195,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 12,
     borderWidth: 1,
-    fontSize: 14,
+    fontSize: FontSize.sm,
     fontWeight: '600',
     letterSpacing: 1,
   },
@@ -204,7 +205,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   bannerText: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
     fontWeight: '500',
   },
   actions: {
@@ -221,7 +222,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   buttonText: {
-    fontSize: 14,
+    fontSize: FontSize.sm,
     fontWeight: '500',
   },
   deleteText: {

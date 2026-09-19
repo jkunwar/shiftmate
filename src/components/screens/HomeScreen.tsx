@@ -1,17 +1,20 @@
-import { ChevronRight, Clock } from 'lucide-react-native';
+import { ChevronRight } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ShiftRow } from '@/components/shifts/ShiftRow';
-import { BottomTabInset } from '@/constants/theme';
-import { useFormat } from '@/hooks/use-format';
 import { useRefreshControl } from '@/components/common/refresh-control';
+import { WeekBars } from '@/components/charts/WeekBars';
+import { CompactShiftRow } from '@/components/shifts/CompactShiftRow';
+import { BottomTabInset, FontSize, ScreenTitle } from '@/constants/theme';
+import { useFormat } from '@/hooks/use-format';
 import { useTheme } from '@/hooks/use-theme';
 import { useToday } from '@/hooks/use-today';
 import { Shift, User, Workplace } from '@/types';
 import { formatRange, getWeekRange } from '@/utils/dateRanges';
 import { formatDuration, shiftEarnings } from '@/utils/timeCalculations';
+import { buildWeekDays } from '@/utils/weekChart';
+import { workplaceColor } from '@/utils/workplaceColor';
 
 interface HomeScreenProps {
   user: User;
@@ -27,19 +30,6 @@ interface HomeScreenProps {
   /** Pull-to-refresh handler (syncs with the cloud). Omit to turn the gesture off. */
   onRefresh?: () => Promise<void>;
 }
-
-// The "This Week" card is dark in both light and dark mode, as in the original design
-const WEEK_CARD = {
-  background: '#0f172a',
-  border: '#1e293b',
-  muted: '#94a3b8',
-  chip: '#1e293b',
-  earnings: '#34d399',
-  text: '#ffffff',
-};
-
-// Amber button with white text stays readable in both modes
-const UNPAID_BUTTON = { base: '#b45309', pressed: '#92400e' };
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({
   onRefresh,
@@ -65,11 +55,18 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     return shifts.filter((s) => s.date >= week.start && s.date <= week.end);
   }, [shifts, week.start, week.end]);
 
+  const weekDays = useMemo(() => buildWeekDays(shifts, week.start), [shifts, week.start]);
+
   const totalWeekMinutes = currentWeekShifts.reduce((acc, s) => acc + s.workedMinutes, 0);
 
   // Total estimated earnings for current week
   const totalWeekEarnings = currentWeekShifts.reduce(
-    (acc, s) => acc + shiftEarnings(s, workplaces.find((w) => w.id === s.workplaceId)),
+    (acc, s) =>
+      acc +
+      shiftEarnings(
+        s,
+        workplaces.find((w) => w.id === s.workplaceId),
+      ),
     0,
   );
 
@@ -92,15 +89,20 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
   const totalUnpaidMinutes = unpaidShifts.reduce((acc, s) => acc + s.workedMinutes, 0);
   const totalUnpaidAmount = unpaidShifts.reduce(
-    (acc, s) => acc + shiftEarnings(s, workplaces.find((w) => w.id === s.workplaceId)),
+    (acc, s) =>
+      acc +
+      shiftEarnings(
+        s,
+        workplaces.find((w) => w.id === s.workplaceId),
+      ),
     0,
   );
 
-  // Recent 4 shifts sorted by date desc
+  // Recent 3 shifts sorted by date desc
   const recentShifts = useMemo(() => {
     return [...shifts]
       .sort((a, b) => b.date.localeCompare(a.date) || b.startTime.localeCompare(a.startTime))
-      .slice(0, 4);
+      .slice(0, 3);
   }, [shifts]);
 
   // Greeting based on time of day
@@ -108,189 +110,155 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
 
   const cardStyle = { backgroundColor: theme.surface, borderColor: theme.border };
+  const shiftCount = currentWeekShifts.length;
+  // Name the workplace on a row only when the recent shifts come from more than one
+  const recentSpansWorkplaces = new Set(recentShifts.map((s) => s.workplaceId)).size > 1;
 
   return (
     <ScrollView
-        refreshControl={refreshControl}
+      refreshControl={refreshControl}
       contentContainerStyle={[
         styles.content,
         { paddingTop: insets.top + 8, paddingBottom: BottomTabInset + insets.bottom + 16 },
       ]}>
       {/* Header */}
-      <View style={styles.header}>
-        <View>
-          <Text style={[styles.greeting, { color: theme.textSecondary }]}>{greeting},</Text>
-          <Text style={[styles.name, { color: theme.text }]}>{user.name.split(' ')[0]}</Text>
-        </View>
+      <View>
+        <Text style={[styles.greeting, { color: theme.textSecondary }]}>{greeting},</Text>
+        <Text style={[styles.name, { color: theme.text }]}>{user.name.split(' ')[0]}</Text>
       </View>
 
-      {/* Current week summary card */}
-      <View
-        style={[
-          styles.weekCard,
-          { backgroundColor: WEEK_CARD.background, borderColor: WEEK_CARD.border },
-        ]}>
-        <View style={styles.weekHeader}>
-          <Text style={[styles.weekLabel, { color: WEEK_CARD.muted }]}>This Week</Text>
+      {/* This week */}
+      <View style={[styles.hero, { backgroundColor: theme.hero }]}>
+        <View style={styles.heroHeader}>
+          <Text style={[styles.heroLabel, { color: theme.heroMuted }]}>This week</Text>
           <Text
-            style={[
-              styles.weekRange,
-              { color: WEEK_CARD.muted, backgroundColor: WEEK_CARD.chip },
-            ]}>
+            style={[styles.heroRange, { color: theme.heroMuted, backgroundColor: theme.heroChip }]}>
             {formatRange(week)}
           </Text>
         </View>
 
-        <Text style={[styles.weekValue, { color: WEEK_CARD.text }]}>
-          {formatDuration(totalWeekMinutes)}
-        </Text>
+        <View style={styles.heroBody}>
+          <Text style={[styles.heroValue, { color: theme.heroText }]}>
+            {formatDuration(totalWeekMinutes)}
+          </Text>
+          <View style={styles.heroChart}>
+            <WeekBars
+              days={weekDays}
+              today={today}
+              emphasis={theme.heroText}
+              muted={theme.heroMuted}
+            />
+          </View>
+        </View>
 
-        <View style={[styles.weekStats, { borderTopColor: WEEK_CARD.border }]}>
+        <View style={[styles.heroStats, { borderTopColor: theme.heroChip }]}>
           <View>
-            <Text style={[styles.weekStatLabel, { color: WEEK_CARD.muted }]}>Est. Earnings</Text>
-            <Text style={[styles.weekStatValue, { color: WEEK_CARD.earnings }]}>
+            <Text style={[styles.heroStatLabel, { color: theme.heroMuted }]}>Est. earnings</Text>
+            <Text style={[styles.heroStatValue, { color: theme.heroPositive }]}>
               {money(totalWeekEarnings)}
             </Text>
           </View>
-          <View style={[styles.divider, { backgroundColor: WEEK_CARD.border }]} />
+          <View style={[styles.heroDivider, { backgroundColor: theme.heroChip }]} />
           <View>
-            <Text style={[styles.weekStatLabel, { color: WEEK_CARD.muted }]}>Shifts</Text>
-            <Text style={[styles.weekStatValue, { color: WEEK_CARD.text }]}>
-              {currentWeekShifts.length} {currentWeekShifts.length === 1 ? 'shift' : 'shifts'}
-            </Text>
+            <Text style={[styles.heroStatLabel, { color: theme.heroMuted }]}>Shifts</Text>
+            <Text style={[styles.heroStatValue, { color: theme.heroText }]}>{shiftCount}</Text>
           </View>
         </View>
       </View>
 
-      {/* This week by workplace */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>This Week by Workplace</Text>
-          <Pressable accessibilityRole="button" onPress={onViewAllWorkplaces} hitSlop={8}>
-            <Text style={[styles.sectionLink, { color: theme.accent }]}>All Workplaces</Text>
-          </Pressable>
-        </View>
+      {/* Owed to you */}
+      {unpaidShifts.length > 0 ? (
+        <Pressable
+          accessibilityRole="button"
+          onPress={onOpenPaymentTracking}
+          style={({ pressed }) => [
+            styles.unpaidRow,
+            cardStyle,
+            pressed && { backgroundColor: theme.backgroundElement },
+          ]}>
+          <View style={[styles.unpaidDot, { backgroundColor: theme.warning }]} />
+          <Text style={[styles.unpaidText, { color: theme.text }]}>
+            {formatDuration(totalUnpaidMinutes)} unpaid
+          </Text>
+          <Text style={[styles.unpaidAmount, { color: theme.text }]}>
+            {money(totalUnpaidAmount)}
+          </Text>
+          <ChevronRight color={theme.textSecondary} size={16} />
+        </Pressable>
+      ) : null}
 
-        {workplaceWeekBreakdown.length === 0 ? (
-          <View style={[styles.emptyCard, cardStyle]}>
-            <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
-              No shifts logged this week yet.
-            </Text>
-          </View>
-        ) : (
-          <View style={styles.list}>
-            {workplaceWeekBreakdown.map((item) => (
+      {/* This week by workplace: only useful when there is more than one to compare */}
+      {workplaceWeekBreakdown.length > 1 ? (
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>By workplace</Text>
+          <View style={[styles.group, cardStyle]}>
+            {workplaceWeekBreakdown.map((item, index) => (
               <Pressable
                 key={item.workplace.id}
                 accessibilityRole="button"
                 onPress={() => onSelectWorkplace(item.workplace.id)}
                 style={({ pressed }) => [
                   styles.wpRow,
-                  cardStyle,
+                  index > 0 && {
+                    borderTopColor: theme.border,
+                    borderTopWidth: StyleSheet.hairlineWidth,
+                  },
                   pressed && { backgroundColor: theme.backgroundElement },
                 ]}>
-                <View style={styles.wpLeft}>
-                  <View
-                    style={[
-                      styles.wpBar,
-                      { backgroundColor: item.workplace.color || theme.accent },
-                    ]}
-                  />
-                  <View style={styles.flex}>
-                    <Text numberOfLines={1} style={[styles.wpName, { color: theme.text }]}>
-                      {item.workplace.name}
-                    </Text>
-                    <Text style={[styles.wpMeta, { color: theme.textSecondary }]}>
-                      {item.shiftsCount} {item.shiftsCount === 1 ? 'shift' : 'shifts'}
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={styles.wpRight}>
-                  <View style={styles.right}>
-                    <Text style={[styles.wpDuration, { color: theme.text }]}>
-                      {formatDuration(item.minutes)}
-                    </Text>
-                    <Text style={[styles.wpEarnings, { color: theme.success }]}>
-                      {money(item.earnings)}
-                    </Text>
-                  </View>
-                  <ChevronRight color={theme.textSecondary} size={16} />
-                </View>
+                <View
+                  style={[styles.wpDot, { backgroundColor: workplaceColor(item.workplace.color, theme.accent) }]}
+                />
+                <Text numberOfLines={1} style={[styles.wpName, { color: theme.text }]}>
+                  {item.workplace.name}
+                </Text>
+                <Text style={[styles.wpDuration, { color: theme.text }]}>
+                  {formatDuration(item.minutes)}
+                </Text>
+                <ChevronRight color={theme.textSecondary} size={16} />
               </Pressable>
             ))}
           </View>
-        )}
-      </View>
-
-      {/* Unpaid card */}
-      <View
-        style={[
-          styles.unpaidCard,
-          { backgroundColor: theme.warningSoft, borderColor: `${theme.warning}55` },
-        ]}>
-        <View style={styles.unpaidHeader}>
-          <View style={styles.unpaidLabel}>
-            <Clock color={theme.warning} size={16} />
-            <Text style={[styles.unpaidLabelText, { color: theme.warning }]}>Unpaid</Text>
-          </View>
-          <Text style={[styles.unpaidAmount, { color: theme.warning }]}>
-            {money(totalUnpaidAmount)}
-          </Text>
         </View>
-
-        <View style={styles.unpaidRow}>
-          <View style={styles.flex}>
-            <Text style={[styles.unpaidValue, { color: theme.text }]}>
-              {formatDuration(totalUnpaidMinutes)}
-            </Text>
-            <Text style={[styles.unpaidHint, { color: theme.warning }]}>
-              Estimated unpaid amount
-            </Text>
-          </View>
-
-          <Pressable
-            accessibilityRole="button"
-            onPress={onOpenPaymentTracking}
-            style={({ pressed }) => [
-              styles.unpaidButton,
-              { backgroundColor: pressed ? UNPAID_BUTTON.pressed : UNPAID_BUTTON.base },
-            ]}>
-            <Text style={styles.unpaidButtonText}>View unpaid hours</Text>
-            <ChevronRight color="#ffffff" size={14} />
-          </Pressable>
-        </View>
-      </View>
+      ) : null}
 
       {/* Recent shifts */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>Recent Shifts</Text>
-          <Pressable accessibilityRole="button" onPress={onViewAllWorkplaces} hitSlop={8}>
-            <Text style={[styles.sectionLink, { color: theme.accent }]}>View all</Text>
-          </Pressable>
+          <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>Recent shifts</Text>
+          {recentShifts.length > 0 ? (
+            <Pressable accessibilityRole="button" onPress={onViewAllWorkplaces} hitSlop={8}>
+              <Text style={[styles.sectionLink, { color: theme.accent }]}>See all</Text>
+            </Pressable>
+          ) : null}
         </View>
 
         {recentShifts.length === 0 ? (
           <View style={[styles.emptyCard, cardStyle]}>
             <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
-              No shifts recorded yet.
+              No shifts yet. Tap + to log your first one.
             </Text>
           </View>
         ) : (
-          <View style={styles.list}>
-            {recentShifts.map((shift) => {
-              const wp = workplaces.find((w) => w.id === shift.workplaceId);
-              return (
-                <ShiftRow
-                  key={shift.id}
+          <View style={[styles.group, cardStyle]}>
+            {recentShifts.map((shift, index) => (
+              <View
+                key={shift.id}
+                style={
+                  index > 0
+                    ? { borderTopColor: theme.border, borderTopWidth: StyleSheet.hairlineWidth }
+                    : undefined
+                }>
+                <CompactShiftRow
                   shift={shift}
-                  workplace={wp}
-                  showWorkplace
-                  onClick={() => onSelectShift(shift)}
+                  workplace={
+                    recentSpansWorkplaces
+                      ? workplaces.find((w) => w.id === shift.workplaceId)
+                      : undefined
+                  }
+                  onPress={() => onSelectShift(shift)}
                 />
-              );
-            })}
+              </View>
+            ))}
           </View>
         )}
       </View>
@@ -299,80 +267,97 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 };
 
 const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-  },
-  right: {
-    alignItems: 'flex-end',
-  },
   content: {
     paddingHorizontal: 16,
-    gap: 20,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: 24,
   },
   greeting: {
-    fontSize: 12,
+    fontSize: FontSize.sm,
     fontWeight: '500',
   },
   name: {
-    fontSize: 20,
-    fontWeight: '700',
+    ...ScreenTitle,
   },
-  weekCard: {
-    padding: 20,
-    gap: 8,
-    borderRadius: 24,
-    borderWidth: 1,
+  hero: {
+    padding: 18,
+    gap: 2,
+    borderRadius: 20,
   },
-  weekHeader: {
+  heroHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  weekLabel: {
-    fontSize: 12,
+  heroLabel: {
+    fontSize: FontSize.sm,
     fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
   },
-  weekRange: {
-    fontSize: 12,
+  heroRange: {
+    fontSize: FontSize.xs,
     fontWeight: '500',
     paddingHorizontal: 10,
-    paddingVertical: 2,
+    paddingVertical: 3,
     borderRadius: 999,
     overflow: 'hidden',
   },
-  weekValue: {
-    fontSize: 30,
-    fontWeight: '900',
-    letterSpacing: -0.5,
+  heroBody: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    gap: 16,
   },
-  weekStats: {
+  heroChart: {
+    width: 148,
+  },
+  heroValue: {
+    fontSize: FontSize.display,
+    fontWeight: '800',
+    letterSpacing: -1,
+  },
+  heroStats: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
-    marginTop: 4,
-    paddingTop: 8,
-    borderTopWidth: 1,
+    gap: 20,
+    marginTop: 8,
+    paddingTop: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
   },
-  weekStatLabel: {
-    fontSize: 11,
+  heroStatLabel: {
+    fontSize: FontSize.xs,
   },
-  weekStatValue: {
-    fontSize: 16,
+  heroStatValue: {
+    fontSize: FontSize.md,
     fontWeight: '700',
   },
-  divider: {
-    width: 1,
-    height: 24,
+  heroDivider: {
+    width: StyleSheet.hairlineWidth,
+    height: 28,
+  },
+  unpaidRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  unpaidDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  unpaidText: {
+    flex: 1,
+    fontSize: FontSize.md,
+    fontWeight: '600',
+  },
+  unpaidAmount: {
+    fontSize: FontSize.md,
+    fontWeight: '700',
   },
   section: {
-    gap: 10,
+    gap: 8,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -380,115 +365,48 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   sectionTitle: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: FontSize.sm,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
   },
   sectionLink: {
-    fontSize: 12,
+    fontSize: FontSize.sm,
     fontWeight: '600',
   },
-  list: {
-    gap: 8,
-  },
-  emptyCard: {
-    padding: 16,
-    borderRadius: 16,
+  group: {
+    borderRadius: 14,
     borderWidth: 1,
-  },
-  emptyText: {
-    fontSize: 12,
-    textAlign: 'center',
+    overflow: 'hidden',
   },
   wpRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     gap: 10,
-    padding: 14,
-    borderRadius: 16,
-    borderWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
   },
-  wpLeft: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  wpBar: {
+  wpDot: {
     width: 10,
-    height: 28,
-    borderRadius: 999,
+    height: 10,
+    borderRadius: 5,
   },
   wpName: {
-    fontSize: 14,
+    flex: 1,
+    fontSize: FontSize.md,
     fontWeight: '600',
-  },
-  wpMeta: {
-    fontSize: 12,
-  },
-  wpRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
   },
   wpDuration: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: FontSize.md,
+    fontWeight: '600',
   },
-  wpEarnings: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  unpaidCard: {
-    padding: 16,
-    gap: 10,
-    borderRadius: 16,
+  emptyCard: {
+    padding: 20,
+    borderRadius: 14,
     borderWidth: 1,
   },
-  unpaidHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  unpaidLabel: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  unpaidLabelText: {
-    fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-  },
-  unpaidAmount: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  unpaidRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  unpaidValue: {
-    fontSize: 24,
-    fontWeight: '900',
-  },
-  unpaidHint: {
-    fontSize: 12,
-  },
-  unpaidButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  unpaidButtonText: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: '600',
+  emptyText: {
+    fontSize: FontSize.sm,
+    textAlign: 'center',
   },
 });

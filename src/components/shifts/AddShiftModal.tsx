@@ -24,6 +24,8 @@ import {
   formatDuration,
   toLocalDateString,
 } from '@/utils/timeCalculations';
+import { FontSize } from '@/constants/theme';
+import { workplaceColor } from '@/utils/workplaceColor';
 
 interface AddShiftModalProps {
   isOpen: boolean;
@@ -294,7 +296,7 @@ const AddShiftForm: React.FC<Omit<AddShiftModalProps, 'isOpen'>> = ({
                     setRateInput(rateToInput(wp.hourlyRate));
                   }}
                   style={[styles.workplaceChip, chipStyle(selected)]}>
-                  <View style={[styles.dot, { backgroundColor: wp.color || theme.accent }]} />
+                  <View style={[styles.dot, { backgroundColor: workplaceColor(wp.color, theme.accent) }]} />
                   <Text
                     style={[
                       styles.chipText,
@@ -551,11 +553,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   title: {
-    fontSize: 18,
+    fontSize: FontSize.lg,
     fontWeight: '700',
   },
   subtitle: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
   },
   closeButton: {
     padding: 8,
@@ -578,13 +580,13 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   label: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 0.8,
   },
   hint: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
     fontWeight: '500',
   },
   input: {
@@ -592,7 +594,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 12,
     borderWidth: 1,
-    fontSize: 14,
+    fontSize: FontSize.sm,
     fontWeight: '500',
   },
   banner: {
@@ -605,7 +607,7 @@ const styles = StyleSheet.create({
   },
   bannerText: {
     flex: 1,
-    fontSize: 12,
+    fontSize: FontSize.xs,
     fontWeight: '500',
   },
   chipWrap: {
@@ -628,7 +630,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   chipText: {
-    fontSize: 13,
+    fontSize: FontSize.sm,
     fontWeight: '500',
   },
   chipTextSelected: {
@@ -641,7 +643,7 @@ const styles = StyleSheet.create({
     paddingTop: 2,
   },
   quickFillText: {
-    fontSize: 11,
+    fontSize: FontSize.xs,
     fontWeight: '500',
   },
   quickDates: {
@@ -654,7 +656,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   quickDateText: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
     fontWeight: '500',
   },
   overnight: {
@@ -666,7 +668,7 @@ const styles = StyleSheet.create({
   },
   overnightText: {
     flex: 1,
-    fontSize: 11,
+    fontSize: FontSize.xs,
   },
   pillRow: {
     flexDirection: 'row',
@@ -689,18 +691,18 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   summaryLabel: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
     fontWeight: '500',
   },
   summaryValue: {
-    fontSize: 20,
+    fontSize: FontSize.lg,
     fontWeight: '700',
   },
   earnings: {
     alignItems: 'flex-end',
   },
   earningsValue: {
-    fontSize: 16,
+    fontSize: FontSize.md,
     fontWeight: '700',
   },
   statusButton: {
@@ -712,7 +714,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   statusText: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
     fontWeight: '600',
   },
   paidDateBox: {
@@ -723,7 +725,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   paidDateLabel: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
     fontWeight: '500',
   },
   amountWrap: {
@@ -733,7 +735,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 14,
     zIndex: 1,
-    fontSize: 14,
+    fontSize: FontSize.sm,
     fontWeight: '700',
   },
   rateInput: {
@@ -750,7 +752,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   saveText: {
-    fontSize: 14,
+    fontSize: FontSize.sm,
     fontWeight: '600',
   },
 });

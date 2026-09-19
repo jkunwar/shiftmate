@@ -8,6 +8,8 @@ import { TimeField } from '@/components/common/DateTimeFields';
 import { useFormat } from '@/hooks/use-format';
 import { useTheme } from '@/hooks/use-theme';
 import { UsualScheduleDay, Workplace } from '@/types';
+import { FontSize } from '@/constants/theme';
+import { workplaceColor } from '@/utils/workplaceColor';
 
 interface AddWorkplaceModalProps {
   isOpen: boolean;
@@ -29,7 +31,8 @@ const defaultSchedule: UsualScheduleDay[] = [
   { dayOfWeek: 0, dayName: 'Sunday', startTime: '10:00', endTime: '16:00', active: false },
 ];
 
-const PRESET_COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#06B6D4'];
+// Earthy tones that sit well on both the light and dark backgrounds
+const PRESET_COLORS = ['#3E6B99', '#5F8A5B', '#C9892B', '#8A5A83', '#B5533C', '#3F8A87'];
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 const AddWorkplaceForm: React.FC<Omit<AddWorkplaceModalProps, 'isOpen'>> = ({
@@ -53,7 +56,7 @@ const AddWorkplaceForm: React.FC<Omit<AddWorkplaceModalProps, 'isOpen'>> = ({
     return defaultHourlyRate ? defaultHourlyRate.toFixed(2) : '';
   });
   const [notes, setNotes] = useState(initialWorkplace?.notes ?? '');
-  const [color, setColor] = useState(initialWorkplace?.color ?? PRESET_COLORS[0]);
+  const [color, setColor] = useState(workplaceColor(initialWorkplace?.color, PRESET_COLORS[0]));
   const [schedule, setSchedule] = useState<UsualScheduleDay[]>(
     initialWorkplace?.usualSchedule ?? defaultSchedule,
   );
@@ -341,11 +344,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   title: {
-    fontSize: 18,
+    fontSize: FontSize.lg,
     fontWeight: '700',
   },
   subtitle: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
   },
   closeButton: {
     padding: 6,
@@ -359,20 +362,20 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   label: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 0.8,
   },
   hint: {
-    fontSize: 11,
+    fontSize: FontSize.xs,
   },
   input: {
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 12,
     borderWidth: 1,
-    fontSize: 14,
+    fontSize: FontSize.sm,
     fontWeight: '500',
   },
   banner: {
@@ -385,7 +388,7 @@ const styles = StyleSheet.create({
   },
   bannerText: {
     flex: 1,
-    fontSize: 12,
+    fontSize: FontSize.xs,
     fontWeight: '500',
   },
   amountWrap: {
@@ -395,7 +398,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 14,
     zIndex: 1,
-    fontSize: 14,
+    fontSize: FontSize.sm,
     fontWeight: '700',
   },
   amountInput: {
@@ -438,7 +441,7 @@ const styles = StyleSheet.create({
   },
   dayText: {
     flexShrink: 1,
-    fontSize: 12,
+    fontSize: FontSize.xs,
     fontWeight: '500',
   },
   times: {
@@ -450,7 +453,7 @@ const styles = StyleSheet.create({
     width: 76,
   },
   off: {
-    fontSize: 11,
+    fontSize: FontSize.xs,
     fontStyle: 'italic',
   },
   buttons: {
@@ -467,7 +470,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   buttonText: {
-    fontSize: 14,
+    fontSize: FontSize.sm,
     fontWeight: '500',
   },
   saveText: {

@@ -2,6 +2,7 @@ import type { LucideIcon } from 'lucide-react-native';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useTheme } from '@/hooks/use-theme';
+import { FontSize } from '@/constants/theme';
 
 export interface SegmentOption<T extends string> {
   value: T;
@@ -82,7 +83,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   segmentText: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
     fontWeight: '500',
   },
   segmentTextSelected: {

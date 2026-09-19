@@ -1,10 +1,10 @@
 import { ArrowLeft, Check, Clock, X } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import {
+  FlatList,
   KeyboardAvoidingView,
   Modal,
   Pressable,
-  FlatList,
   ScrollView,
   StyleSheet,
   Text,
@@ -15,12 +15,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { DateField } from '@/components/common/DateTimeFields';
 import { EmptyState } from '@/components/common/EmptyState';
-import { PaymentStatusBadge } from '@/components/common/PaymentStatusBadge';
-import { BottomTabInset } from '@/constants/theme';
-import { useFormat } from '@/hooks/use-format';
 import { ListSeparator } from '@/components/common/list-separator';
-import { SegmentedControl } from '@/components/common/SegmentedControl';
+import { PaymentStatusBadge } from '@/components/common/PaymentStatusBadge';
 import { useRefreshControl } from '@/components/common/refresh-control';
+import { SegmentedControl } from '@/components/common/SegmentedControl';
+import { BottomTabInset, FontSize, SubScreenTitle } from '@/constants/theme';
+import { useFormat } from '@/hooks/use-format';
 import { useTheme } from '@/hooks/use-theme';
 import { Shift, Workplace } from '@/types';
 import {
@@ -29,6 +29,7 @@ import {
   shiftEarnings,
   toLocalDateString,
 } from '@/utils/timeCalculations';
+import { workplaceColor } from '@/utils/workplaceColor';
 
 interface PaymentTrackingScreenProps {
   workplaces: Workplace[];
@@ -171,7 +172,7 @@ export const PaymentTrackingScreen: React.FC<PaymentTrackingScreenProps> = ({
                 style={styles.backButton}
               >
                 <ArrowLeft color={theme.textSecondary} size={16} />
-                <Text style={[styles.backText, { color: theme.textSecondary }]}>Dashboard</Text>
+                <Text style={[styles.backText, { color: theme.textSecondary }]}>Home</Text>
               </Pressable>
               <Text style={[styles.headerTitle, { color: theme.text }]}>Payment Tracking</Text>
               <View style={styles.headerSpacer} />
@@ -315,7 +316,7 @@ export const PaymentTrackingScreen: React.FC<PaymentTrackingScreenProps> = ({
               >
                 <View style={styles.flex}>
                   <View style={styles.wpRow}>
-                    <View style={[styles.dot, { backgroundColor: wp?.color || theme.accent }]} />
+                    <View style={[styles.dot, { backgroundColor: workplaceColor(wp?.color, theme.accent) }]} />
                     <Text numberOfLines={1} style={[styles.wpName, { color: theme.text }]}>
                       {wp?.name || 'Workplace'}
                     </Text>
@@ -517,12 +518,11 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   backText: {
-    fontSize: 12,
+    fontSize: FontSize.md,
     fontWeight: '600',
   },
   headerTitle: {
-    fontSize: 14,
-    fontWeight: '700',
+    ...SubScreenTitle,
   },
   headerSpacer: {
     width: 88,
@@ -539,7 +539,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   heroLabelText: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.8,
@@ -551,18 +551,18 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   heroValue: {
-    fontSize: 30,
+    fontSize: FontSize.xxl,
     fontWeight: '900',
   },
   heroSub: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
     marginTop: 2,
   },
   smallLabel: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
   },
   paidToDate: {
-    fontSize: 16,
+    fontSize: FontSize.md,
     fontWeight: '700',
   },
   metrics: {
@@ -573,10 +573,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   metricLabel: {
-    fontSize: 11,
+    fontSize: FontSize.xs,
   },
   metricValue: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
     fontWeight: '700',
   },
   filters: {
@@ -593,7 +593,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   pillText: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
     fontWeight: '500',
   },
   headerBlock: {
@@ -624,19 +624,19 @@ const styles = StyleSheet.create({
   },
   wpName: {
     flexShrink: 1,
-    fontSize: 12,
+    fontSize: FontSize.xs,
     fontWeight: '700',
   },
   shiftMeta: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
     marginTop: 2,
   },
   shiftDuration: {
-    fontSize: 14,
+    fontSize: FontSize.sm,
     fontWeight: '700',
   },
   shiftEarnings: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
     fontWeight: '500',
   },
   shiftBottom: {
@@ -652,7 +652,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   received: {
-    fontSize: 11,
+    fontSize: FontSize.xs,
   },
   markPaid: {
     flexDirection: 'row',
@@ -663,11 +663,11 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   markPaidText: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
     fontWeight: '600',
   },
   markUnpaid: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
   },
   backdrop: {
     flex: 1,
@@ -691,11 +691,11 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   dialogTitle: {
-    fontSize: 16,
+    fontSize: FontSize.md,
     fontWeight: '700',
   },
   dialogSub: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
   },
   field: {
     gap: 4,
@@ -708,19 +708,19 @@ const styles = StyleSheet.create({
   },
   fieldLabel: {
     flexShrink: 1,
-    fontSize: 12,
+    fontSize: FontSize.xs,
     fontWeight: '600',
     textTransform: 'uppercase',
   },
   expected: {
-    fontSize: 11,
+    fontSize: FontSize.xs,
   },
   input: {
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderRadius: 12,
     borderWidth: 1,
-    fontSize: 13,
+    fontSize: FontSize.sm,
     fontWeight: '500',
   },
   amountWrap: {
@@ -730,7 +730,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 12,
     zIndex: 1,
-    fontSize: 13,
+    fontSize: FontSize.sm,
     fontWeight: '700',
   },
   amountInput: {
@@ -749,7 +749,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   dialogButtonText: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
     fontWeight: '500',
   },
   dialogButtonStrong: {

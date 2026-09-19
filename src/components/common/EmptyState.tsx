@@ -3,6 +3,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useTheme } from '@/hooks/use-theme';
+import { FontSize } from '@/constants/theme';
 
 interface EmptyStateProps {
   type: 'workplaces' | 'shifts' | 'unpaid' | 'reports' | 'custom';
@@ -109,13 +110,13 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   title: {
-    fontSize: 16,
+    fontSize: FontSize.md,
     fontWeight: '600',
     textAlign: 'center',
     marginBottom: 6,
   },
   description: {
-    fontSize: 14,
+    fontSize: FontSize.sm,
     lineHeight: 22,
     textAlign: 'center',
     maxWidth: 320,
@@ -130,7 +131,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   buttonText: {
-    fontSize: 14,
+    fontSize: FontSize.sm,
     fontWeight: '500',
   },
 });

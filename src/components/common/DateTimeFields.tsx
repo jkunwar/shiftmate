@@ -8,6 +8,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useFormat } from '@/hooks/use-format';
 import { useTheme } from '@/hooks/use-theme';
 import { toLocalDateString } from '@/utils/timeCalculations';
+import { FontSize } from '@/constants/theme';
 
 /**
  * Tap-to-pick date and time fields. Values stay plain strings ("YYYY-MM-DD" and "HH:mm") so they
@@ -218,11 +219,11 @@ const styles = StyleSheet.create({
   },
   text: {
     flexShrink: 1,
-    fontSize: 14,
+    fontSize: FontSize.sm,
     fontWeight: '500',
   },
   textCompact: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
     textAlign: 'center',
   },
   backdrop: {
@@ -244,11 +245,11 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   sheetTitle: {
-    fontSize: 14,
+    fontSize: FontSize.sm,
     fontWeight: '700',
   },
   sheetAction: {
-    fontSize: 14,
+    fontSize: FontSize.sm,
   },
   sheetDone: {
     fontWeight: '700',

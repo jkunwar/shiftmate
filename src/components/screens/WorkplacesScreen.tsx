@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { EmptyState } from '@/components/common/EmptyState';
 import { WorkplaceCard } from '@/components/workplaces/WorkplaceCard';
-import { BottomTabInset } from '@/constants/theme';
+import { BottomTabInset, FontSize, ScreenTitle } from '@/constants/theme';
 import { useRefreshControl } from '@/components/common/refresh-control';
 import { useTheme } from '@/hooks/use-theme';
 import { useToday } from '@/hooks/use-today';
@@ -100,11 +100,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   heading: {
-    fontSize: 20,
-    fontWeight: '700',
+    ...ScreenTitle,
   },
   subheading: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
   },
   addButton: {
     flexDirection: 'row',
@@ -115,7 +114,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   addText: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
     fontWeight: '600',
   },
   list: {

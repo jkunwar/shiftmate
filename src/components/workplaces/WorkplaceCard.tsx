@@ -6,6 +6,8 @@ import { useFormat } from '@/hooks/use-format';
 import { useTheme } from '@/hooks/use-theme';
 import { Shift, Workplace } from '@/types';
 import { formatDuration, shiftEarnings } from '@/utils/timeCalculations';
+import { FontSize } from '@/constants/theme';
+import { workplaceColor } from '@/utils/workplaceColor';
 
 interface WorkplaceCardProps {
   workplace: Workplace;
@@ -54,7 +56,7 @@ export const WorkplaceCard: React.FC<WorkplaceCardProps> = ({
       ]}>
       <View style={styles.header}>
         <View style={styles.titleWrap}>
-          <View style={[styles.colorBar, { backgroundColor: workplace.color || theme.accent }]} />
+          <View style={[styles.colorBar, { backgroundColor: workplaceColor(workplace.color, theme.accent) }]} />
           <View style={styles.titleText}>
             <Text numberOfLines={1} style={[styles.name, { color: theme.text }]}>
               {workplace.name}
@@ -156,11 +158,11 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   name: {
-    fontSize: 16,
+    fontSize: FontSize.md,
     fontWeight: '600',
   },
   month: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
     fontWeight: '500',
   },
   metrics: {
@@ -176,10 +178,10 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   metricLabel: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
   },
   metricValue: {
-    fontSize: 14,
+    fontSize: FontSize.sm,
     fontWeight: '600',
   },
   metricStrong: {
@@ -201,14 +203,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   pillText: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
     fontWeight: '500',
   },
   empty: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
   },
   rate: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
     fontWeight: '500',
   },
 });

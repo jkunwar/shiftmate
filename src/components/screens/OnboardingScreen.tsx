@@ -14,10 +14,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Banner, Field, LinkButton, PrimaryButton } from '@/components/auth/auth-ui';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
+import { FontSize } from '@/constants/theme';
 
 type AuthStep = 'welcome' | 'signup' | 'signin' | 'forgot' | 'confirm';
 
-const PURPLE = '#8b5cf6';
+const PURPLE = '#8A5A83';
 
 function Pillar({
   icon: Icon,
@@ -469,12 +470,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   brandName: {
-    fontSize: 16,
+    fontSize: FontSize.md,
     fontWeight: '700',
     letterSpacing: -0.2,
   },
   tagline: {
-    fontSize: 11,
+    fontSize: FontSize.xs,
     fontWeight: '500',
   },
   main: {
@@ -497,17 +498,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   chipText: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
     fontWeight: '600',
   },
   headline: {
-    fontSize: 30,
+    fontSize: FontSize.xxl,
     lineHeight: 36,
     fontWeight: '900',
     letterSpacing: -0.5,
   },
   lead: {
-    fontSize: 14,
+    fontSize: FontSize.sm,
     lineHeight: 22,
   },
   pillars: {
@@ -527,11 +528,11 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   pillarTitle: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
     fontWeight: '700',
   },
   pillarDescription: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
   },
   actions: {
     gap: 10,
@@ -548,15 +549,15 @@ const styles = StyleSheet.create({
     boxShadow: '0 4px 8px rgba(0, 0, 0, 0.15)',
   },
   primaryButtonText: {
-    fontSize: 14,
+    fontSize: FontSize.sm,
     fontWeight: '600',
   },
   title: {
-    fontSize: 24,
+    fontSize: FontSize.xl,
     fontWeight: '700',
   },
   subtitle: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
     lineHeight: 18,
     marginTop: 4,
   },
@@ -567,7 +568,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-end',
   },
   forgotText: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
     fontWeight: '600',
   },
   mailIcon: {
@@ -578,6 +579,6 @@ const styles = StyleSheet.create({
   },
   footer: {
     textAlign: 'center',
-    fontSize: 11,
+    fontSize: FontSize.xs,
   },
 });

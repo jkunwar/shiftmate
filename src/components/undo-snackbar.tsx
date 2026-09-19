@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useTheme } from '@/hooks/use-theme';
 import { useAppState } from '@/lib/app-state';
+import { FontSize } from '@/constants/theme';
 
 /** "Shift deleted · Undo" bar shown for a few seconds after a delete. */
 export function UndoSnackbar({ bottom }: { bottom: number }) {
@@ -56,11 +57,11 @@ const styles = StyleSheet.create({
   },
   message: {
     flexShrink: 1,
-    fontSize: 14,
+    fontSize: FontSize.sm,
     fontWeight: '500',
   },
   action: {
-    fontSize: 14,
+    fontSize: FontSize.sm,
     fontWeight: '700',
   },
 });

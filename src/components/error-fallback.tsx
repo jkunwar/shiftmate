@@ -2,7 +2,7 @@ import { type ErrorBoundaryProps } from 'expo-router';
 import { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, useColorScheme, View } from 'react-native';
 
-import { Colors, Spacing } from '@/constants/theme';
+import { Colors, FontSize, Spacing } from '@/constants/theme';
 import { reportError } from '@/lib/error-reporting';
 
 /**
@@ -45,14 +45,14 @@ const styles = StyleSheet.create({
     padding: Spacing.four,
     gap: Spacing.three,
   },
-  title: { fontSize: 22, fontWeight: '700', textAlign: 'center' },
-  body: { fontSize: 15, lineHeight: 22, textAlign: 'center' },
+  title: { fontSize: FontSize.xl, fontWeight: '700', textAlign: 'center' },
+  body: { fontSize: FontSize.md, lineHeight: 22, textAlign: 'center' },
   button: {
     marginTop: Spacing.two,
     paddingHorizontal: Spacing.four,
     paddingVertical: Spacing.three,
     borderRadius: 12,
   },
-  buttonLabel: { fontSize: 16, fontWeight: '600' },
+  buttonLabel: { fontSize: FontSize.md, fontWeight: '600' },
   pressed: { opacity: 0.7 },
 });

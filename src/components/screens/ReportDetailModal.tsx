@@ -6,6 +6,7 @@ import { useFormat } from '@/hooks/use-format';
 import { useTheme } from '@/hooks/use-theme';
 import { Shift, User, Workplace } from '@/types';
 import { formatDate, formatDuration } from '@/utils/timeCalculations';
+import { FontSize } from '@/constants/theme';
 
 interface ReportDetailModalProps {
   isOpen: boolean;
@@ -45,6 +46,7 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
 }) => {
   const theme = useTheme();
   const { time } = useFormat();
+  const hasShifts = shifts.length > 0;
 
   if (!isOpen) return null;
 
@@ -73,32 +75,38 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
             <View style={styles.toolbarActions}>
               <Pressable
                 accessibilityLabel="Share"
+                disabled={!hasShifts}
                 onPress={onShare}
                 hitSlop={4}
                 style={({ pressed }) => [
                   styles.iconButton,
                   pressed && { backgroundColor: theme.backgroundSelected },
+                  !hasShifts && styles.disabled,
                 ]}>
                 <Share2 color={theme.textSecondary} size={16} />
               </Pressable>
               <Pressable
                 accessibilityLabel="Export CSV"
+                disabled={!hasShifts}
                 onPress={onExportCSV}
                 hitSlop={4}
                 style={({ pressed }) => [
                   styles.iconButton,
                   pressed && { backgroundColor: theme.backgroundSelected },
+                  !hasShifts && styles.disabled,
                 ]}>
                 <Download color={theme.textSecondary} size={16} />
               </Pressable>
               {onPrint ? (
                 <Pressable
                   accessibilityLabel="Print timesheet"
+                  disabled={!hasShifts}
                   onPress={onPrint}
                   hitSlop={4}
                   style={({ pressed }) => [
                     styles.iconButton,
                     pressed && { backgroundColor: theme.backgroundSelected },
+                    !hasShifts && styles.disabled,
                   ]}>
                   <Printer color={theme.textSecondary} size={16} />
                 </Pressable>
@@ -229,6 +237,8 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
             ]}>
             <Pressable
               accessibilityRole="button"
+              accessibilityState={{ disabled: !hasShifts }}
+              disabled={!hasShifts}
               onPress={onExportCSV}
               style={({ pressed }) => [
                 styles.footerButton,
@@ -236,6 +246,7 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
                   backgroundColor: pressed ? theme.backgroundSelected : theme.surface,
                   borderColor: theme.border,
                 },
+                !hasShifts && styles.disabled,
               ]}>
               <Download color={theme.text} size={14} />
               <Text style={[styles.footerText, { color: theme.text }]}>Export CSV</Text>
@@ -243,6 +254,8 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
             {onPrint ? (
               <Pressable
                 accessibilityRole="button"
+                accessibilityState={{ disabled: !hasShifts }}
+                disabled={!hasShifts}
                 onPress={onPrint}
                 style={({ pressed }) => [
                   styles.footerButton,
@@ -250,6 +263,7 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
                     backgroundColor: pressed ? theme.accentPressed : theme.accent,
                     borderColor: 'transparent',
                   },
+                  !hasShifts && styles.disabled,
                 ]}>
                 <Printer color={theme.onAccent} size={14} />
                 <Text style={[styles.footerText, { color: theme.onAccent }]}>
@@ -265,6 +279,9 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
 };
 
 const styles = StyleSheet.create({
+  disabled: {
+    opacity: 0.4,
+  },
   flex: {
     flex: 1,
   },
@@ -294,7 +311,7 @@ const styles = StyleSheet.create({
   },
   toolbarTitle: {
     flexShrink: 1,
-    fontSize: 12,
+    fontSize: FontSize.xs,
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.8,
@@ -328,26 +345,26 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   eyebrow: {
-    fontSize: 11,
+    fontSize: FontSize.xs,
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 1.5,
   },
   docTitle: {
-    fontSize: 24,
+    fontSize: FontSize.xl,
     fontWeight: '900',
     letterSpacing: -0.5,
   },
   workplaceName: {
     marginTop: 2,
-    fontSize: 14,
+    fontSize: FontSize.sm,
     fontWeight: '600',
   },
   smallMuted: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
   },
   period: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
     fontWeight: '700',
   },
   employee: {
@@ -366,14 +383,14 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   cell: {
-    fontSize: 11,
+    fontSize: FontSize.xs,
     paddingHorizontal: 2,
   },
   headerCell: {
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.3,
-    fontSize: 10,
+    fontSize: FontSize.xs,
   },
   dateCell: {
     fontWeight: '500',
@@ -394,16 +411,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   totalLabel: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
     fontWeight: '500',
   },
   totalValue: {
-    fontSize: 20,
+    fontSize: FontSize.lg,
     fontWeight: '900',
   },
   shiftCount: {
     marginTop: 2,
-    fontSize: 11,
+    fontSize: FontSize.xs,
   },
   signatures: {
     flexDirection: 'row',
@@ -417,7 +434,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   signatureLabel: {
-    fontSize: 11,
+    fontSize: FontSize.xs,
   },
   footer: {
     flexDirection: 'row',
@@ -437,7 +454,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   footerText: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
     fontWeight: '600',
   },
 });

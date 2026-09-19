@@ -3,6 +3,7 @@ import React from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useTheme } from '@/hooks/use-theme';
+import { FontSize } from '@/constants/theme';
 
 interface ConfirmationDialogProps {
   isOpen: boolean;
@@ -117,12 +118,12 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   title: {
-    fontSize: 16,
+    fontSize: FontSize.md,
     fontWeight: '600',
     lineHeight: 22,
   },
   message: {
-    fontSize: 14,
+    fontSize: FontSize.sm,
     lineHeight: 22,
   },
   actions: {
@@ -138,7 +139,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   buttonText: {
-    fontSize: 14,
+    fontSize: FontSize.sm,
     fontWeight: '500',
   },
   confirmText: {

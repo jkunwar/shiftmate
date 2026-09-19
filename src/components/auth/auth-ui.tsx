@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 
 import { useTheme } from '@/hooks/use-theme';
+import { FontSize } from '@/constants/theme';
 
 export function Field({ label, ...inputProps }: { label: string } & TextInputProps) {
   const theme = useTheme();
@@ -87,7 +88,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   label: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
     fontWeight: '600',
     textTransform: 'uppercase',
   },
@@ -96,7 +97,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 12,
     borderWidth: 1,
-    fontSize: 14,
+    fontSize: FontSize.sm,
     fontWeight: '500',
   },
   banner: {
@@ -105,7 +106,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   bannerText: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
     fontWeight: '500',
   },
   primaryButton: {
@@ -119,7 +120,7 @@ const styles = StyleSheet.create({
     boxShadow: '0 4px 8px rgba(0, 0, 0, 0.15)',
   },
   primaryButtonText: {
-    fontSize: 14,
+    fontSize: FontSize.sm,
     fontWeight: '600',
   },
   disabled: {
@@ -130,7 +131,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   linkText: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
     fontWeight: '600',
   },
 });

@@ -2,7 +2,7 @@ import { CloudOff, RefreshCw } from 'lucide-react-native';
 import React from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
-import { AddButtonRaise } from '@/constants/theme';
+import { AddButtonRaise, FontSize } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAppState } from '@/lib/app-state';
 
@@ -61,7 +61,7 @@ const styles = StyleSheet.create({
   },
   text: {
     flexShrink: 1,
-    fontSize: 12,
+    fontSize: FontSize.xs,
     fontWeight: '600',
   },
 });

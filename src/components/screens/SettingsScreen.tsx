@@ -30,7 +30,7 @@ import { SetPasswordForm } from '@/components/auth/SetPasswordForm';
 import { ConfirmationDialog } from '@/components/common/ConfirmationDialog';
 import { DeleteAccountModal } from '@/components/common/DeleteAccountModal';
 import { SegmentedControl } from '@/components/common/SegmentedControl';
-import { BottomTabInset } from '@/constants/theme';
+import { BottomTabInset, FontSize, ScreenTitle } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { User, UserPreferences } from '@/types';
 
@@ -529,13 +529,11 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   backText: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
     fontWeight: '600',
   },
   heading: {
-    fontSize: 28,
-    fontWeight: '800',
-    letterSpacing: -0.5,
+    ...ScreenTitle,
   },
   profile: {
     flexDirection: 'row',
@@ -553,15 +551,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   avatarText: {
-    fontSize: 18,
+    fontSize: FontSize.lg,
     fontWeight: '800',
   },
   profileName: {
-    fontSize: 16,
+    fontSize: FontSize.md,
     fontWeight: '700',
   },
   profileEmail: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
   },
   notice: {
     flexDirection: 'row',
@@ -572,7 +570,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   noticeText: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
     fontWeight: '600',
   },
   card: {
@@ -593,14 +591,14 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   cardTitleText: {
-    fontSize: 14,
+    fontSize: FontSize.sm,
     fontWeight: '700',
   },
   field: {
     gap: 4,
   },
   label: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
     fontWeight: '600',
     textTransform: 'uppercase',
   },
@@ -609,7 +607,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 12,
     borderWidth: 1,
-    fontSize: 13,
+    fontSize: FontSize.sm,
     fontWeight: '500',
   },
   primaryButton: {
@@ -619,7 +617,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   primaryButtonText: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
     fontWeight: '600',
   },
   prefRow: {
@@ -632,11 +630,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   prefTitle: {
-    fontSize: 13,
+    fontSize: FontSize.sm,
     fontWeight: '600',
   },
   prefDescription: {
-    fontSize: 11,
+    fontSize: FontSize.xs,
   },
   rateWrap: {
     width: 96,
@@ -646,7 +644,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 10,
     zIndex: 1,
-    fontSize: 13,
+    fontSize: FontSize.sm,
     fontWeight: '700',
   },
   rateInput: {
@@ -680,7 +678,7 @@ const styles = StyleSheet.create({
   },
   actionText: {
     flexShrink: 1,
-    fontSize: 13,
+    fontSize: FontSize.sm,
     fontWeight: '600',
   },
   aboutRow: {
@@ -690,11 +688,11 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   aboutLabel: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
   },
   aboutValue: {
     flexShrink: 1,
-    fontSize: 12,
+    fontSize: FontSize.xs,
     fontWeight: '600',
     textAlign: 'right',
   },

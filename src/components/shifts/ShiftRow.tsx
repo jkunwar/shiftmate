@@ -7,6 +7,8 @@ import { useFormat } from '@/hooks/use-format';
 import { useTheme } from '@/hooks/use-theme';
 import { Shift, Workplace } from '@/types';
 import { formatDate, formatDuration } from '@/utils/timeCalculations';
+import { FontSize } from '@/constants/theme';
+import { workplaceColor } from '@/utils/workplaceColor';
 
 interface ShiftRowProps {
   shift: Shift;
@@ -43,7 +45,7 @@ export const ShiftRow: React.FC<ShiftRowProps> = ({
       <View style={styles.details}>
         {showWorkplace && workplace ? (
           <View style={styles.workplaceRow}>
-            <View style={[styles.dot, { backgroundColor: workplace.color || theme.accent }]} />
+            <View style={[styles.dot, { backgroundColor: workplaceColor(workplace.color, theme.accent) }]} />
             <Text numberOfLines={1} style={[styles.workplaceName, { color: theme.text }]}>
               {workplace.name}
             </Text>
@@ -107,7 +109,7 @@ const styles = StyleSheet.create({
   },
   workplaceName: {
     flexShrink: 1,
-    fontSize: 12,
+    fontSize: FontSize.xs,
     fontWeight: '600',
   },
   dateRow: {
@@ -116,18 +118,18 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   date: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
     fontWeight: '500',
   },
   breakTag: {
-    fontSize: 11,
+    fontSize: FontSize.xs,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
     overflow: 'hidden',
   },
   time: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
   },
   trailing: {
     flexDirection: 'row',
@@ -139,7 +141,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   duration: {
-    fontSize: 16,
+    fontSize: FontSize.md,
     fontWeight: '700',
   },
 });

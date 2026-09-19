@@ -6,6 +6,7 @@ import { LinkButton } from '@/components/auth/auth-ui';
 import { SetPasswordForm } from '@/components/auth/SetPasswordForm';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
+import { FontSize } from '@/constants/theme';
 
 /** Shown after opening a password-reset email link. Setting a password finishes the recovery. */
 export function ResetPasswordScreen() {
@@ -47,11 +48,11 @@ const styles = StyleSheet.create({
     gap: 20,
   },
   title: {
-    fontSize: 24,
+    fontSize: FontSize.xl,
     fontWeight: '700',
   },
   subtitle: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
     marginTop: 4,
   },
 });

@@ -25,8 +25,8 @@ export const demoPreferences: UserPreferences = {
 };
 
 export const demoWorkplaces: Workplace[] = [
-  { id: 'wp-cafe', name: 'Blue Bottle Cafe', color: '#3B82F6', hourlyRate: 18.5 },
-  { id: 'wp-library', name: 'City Library', color: '#10B981', hourlyRate: 16 },
+  { id: 'wp-cafe', name: 'Blue Bottle Cafe', color: '#3E6B99', hourlyRate: 18.5 },
+  { id: 'wp-library', name: 'City Library', color: '#5F8A5B', hourlyRate: 16 },
 ];
 
 function shift(

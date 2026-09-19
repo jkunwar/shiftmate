@@ -4,6 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { useTheme } from '@/hooks/use-theme';
 import { PaymentStatus } from '@/types';
+import { FontSize } from '@/constants/theme';
 
 interface PaymentStatusBadgeProps {
   status: PaymentStatus;
@@ -57,7 +58,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   label: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
     fontWeight: '500',
   },
 });

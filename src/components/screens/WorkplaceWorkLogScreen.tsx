@@ -17,16 +17,17 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ConfirmationDialog } from '@/components/common/ConfirmationDialog';
 import { EmptyState } from '@/components/common/EmptyState';
-import { ShiftRow } from '@/components/shifts/ShiftRow';
-import { BottomTabInset } from '@/constants/theme';
-import { useFormat } from '@/hooks/use-format';
 import { SegmentedControl } from '@/components/common/SegmentedControl';
 import { useRefreshControl } from '@/components/common/refresh-control';
+import { ShiftTimeline } from '@/components/shifts/ShiftTimeline';
+import { BottomTabInset, FontSize } from '@/constants/theme';
+import { useFormat } from '@/hooks/use-format';
 import { useTheme } from '@/hooks/use-theme';
 import { useToday } from '@/hooks/use-today';
 import { Shift, Workplace } from '@/types';
 import { monthName } from '@/utils/dateRanges';
 import { formatDuration, groupShiftsByMonthAndWeek } from '@/utils/timeCalculations';
+import { workplaceColor } from '@/utils/workplaceColor';
 import { CalendarView } from './CalendarView';
 
 interface WorkplaceWorkLogScreenProps {
@@ -151,7 +152,7 @@ export const WorkplaceWorkLogScreen: React.FC<WorkplaceWorkLogScreenProps> = ({
           <View style={styles.heroTop}>
             <View style={styles.heroTitle}>
               <View
-                style={[styles.colorBar, { backgroundColor: workplace.color || theme.accent }]}
+                style={[styles.colorBar, { backgroundColor: workplaceColor(workplace.color, theme.accent) }]}
               />
               <View style={styles.flex}>
                 <Text numberOfLines={1} style={[styles.workplaceName, { color: theme.text }]}>
@@ -293,7 +294,7 @@ export const WorkplaceWorkLogScreen: React.FC<WorkplaceWorkLogScreenProps> = ({
               currentMonthGroup.weeks.map((week) => {
                 const isCollapsed = !!collapsedWeeks[week.weekNumber];
                 return (
-                  <View key={week.weekNumber} style={[styles.week, cardStyle]}>
+                  <View key={week.weekNumber} style={[styles.week, { borderBottomColor: theme.border }]}>
                     {/* Collapsible week header */}
                     <Pressable
                       accessibilityRole="button"
@@ -301,11 +302,7 @@ export const WorkplaceWorkLogScreen: React.FC<WorkplaceWorkLogScreenProps> = ({
                       onPress={() => toggleWeekCollapse(week.weekNumber)}
                       style={({ pressed }) => [
                         styles.weekHeader,
-                        {
-                          backgroundColor: pressed
-                            ? theme.backgroundSelected
-                            : theme.backgroundElement,
-                        },
+                        pressed && { backgroundColor: theme.backgroundElement },
                       ]}>
                       <View style={styles.weekTitle}>
                         {isCollapsed ? (
@@ -325,19 +322,9 @@ export const WorkplaceWorkLogScreen: React.FC<WorkplaceWorkLogScreenProps> = ({
                       </Text>
                     </Pressable>
 
-                    {/* Individual shifts in week */}
+                    {/* Individual shifts in week, as a timeline */}
                     {!isCollapsed ? (
-                      <View style={styles.weekShifts}>
-                        {week.shifts.map((shift) => (
-                          <ShiftRow
-                            key={shift.id}
-                            shift={shift}
-                            workplace={workplace}
-                            showWorkplace={false}
-                            onClick={() => onSelectShift(shift)}
-                          />
-                        ))}
-                      </View>
+                      <ShiftTimeline shifts={week.shifts} onSelectShift={onSelectShift} />
                     ) : null}
                   </View>
                 );
@@ -385,7 +372,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   backText: {
-    fontSize: 12,
+    fontSize: FontSize.md,
     fontWeight: '600',
   },
   hero: {
@@ -411,7 +398,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   workplaceName: {
-    fontSize: 20,
+    fontSize: FontSize.lg,
     fontWeight: '700',
   },
   address: {
@@ -422,7 +409,7 @@ const styles = StyleSheet.create({
   },
   addressText: {
     flexShrink: 1,
-    fontSize: 12,
+    fontSize: FontSize.xs,
   },
   deleteButton: {
     padding: 6,
@@ -440,7 +427,7 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   monthLabel: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.8,
@@ -453,11 +440,11 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
     marginBottom: 2,
   },
   statValue: {
-    fontSize: 16,
+    fontSize: FontSize.md,
     fontWeight: '700',
   },
   unpaid: {
@@ -474,11 +461,11 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   unpaidText: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
     fontWeight: '500',
   },
   unpaidAmount: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
     fontWeight: '700',
   },
   addButton: {
@@ -492,22 +479,23 @@ const styles = StyleSheet.create({
   },
   addText: {
     flexShrink: 1,
-    fontSize: 12,
+    fontSize: FontSize.xs,
     fontWeight: '600',
   },
   weeks: {
-    gap: 16,
+    borderTopWidth: 0,
   },
   week: {
-    borderRadius: 16,
-    borderWidth: 1,
-    overflow: 'hidden',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingBottom: 6,
   },
   weekHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 4,
+    borderRadius: 8,
   },
   weekTitle: {
     flexDirection: 'row',
@@ -516,19 +504,15 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   weekLabel: {
-    fontSize: 12,
+    fontSize: FontSize.md,
     fontWeight: '700',
   },
   weekRange: {
-    fontSize: 11,
+    fontSize: FontSize.sm,
     fontWeight: '400',
   },
   weekTotal: {
-    fontSize: 12,
+    fontSize: FontSize.md,
     fontWeight: '700',
-  },
-  weekShifts: {
-    padding: 8,
-    gap: 6,
   },
 });

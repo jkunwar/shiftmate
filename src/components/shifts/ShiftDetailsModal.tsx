@@ -26,6 +26,8 @@ import {
   shiftEarnings,
   toLocalDateString,
 } from '@/utils/timeCalculations';
+import { FontSize } from '@/constants/theme';
+import { workplaceColor } from '@/utils/workplaceColor';
 
 interface ShiftDetailsModalProps {
   isOpen: boolean;
@@ -99,7 +101,7 @@ export const ShiftDetailsModal: React.FC<ShiftDetailsModalProps> = ({
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: theme.border }]}>
         <View style={styles.headerTitle}>
-          <View style={[styles.dot, { backgroundColor: workplace?.color || theme.accent }]} />
+          <View style={[styles.dot, { backgroundColor: workplaceColor(workplace?.color, theme.accent) }]} />
           <Text numberOfLines={1} style={[styles.title, { color: theme.text }]}>
             {workplace?.name || 'Workplace Shift'}
           </Text>
@@ -406,7 +408,7 @@ const styles = StyleSheet.create({
   },
   title: {
     flexShrink: 1,
-    fontSize: 16,
+    fontSize: FontSize.md,
     fontWeight: '700',
   },
   closeButton: {
@@ -421,13 +423,13 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   eyebrow: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 0.8,
   },
   dateHeadline: {
-    fontSize: 18,
+    fontSize: FontSize.lg,
     fontWeight: '700',
   },
   twoColumns: {
@@ -444,10 +446,10 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   cardLabel: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
   },
   cardValue: {
-    fontSize: 14,
+    fontSize: FontSize.sm,
     fontWeight: '600',
   },
   totalCard: {
@@ -460,11 +462,11 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   totalLabel: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
     fontWeight: '500',
   },
   totalValue: {
-    fontSize: 24,
+    fontSize: FontSize.xl,
     fontWeight: '900',
   },
   earnings: {
@@ -472,7 +474,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   earningsValue: {
-    fontSize: 20,
+    fontSize: FontSize.lg,
     fontWeight: '700',
   },
   statusCard: {
@@ -481,10 +483,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   paidOn: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
   },
   notes: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
     lineHeight: 18,
   },
   actions: {
@@ -509,7 +511,7 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   actionText: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
     fontWeight: '500',
   },
   confirmText: {
@@ -539,11 +541,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   dialogTitle: {
-    fontSize: 16,
+    fontSize: FontSize.md,
     fontWeight: '700',
   },
   fieldLabel: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
     fontWeight: '600',
     textTransform: 'uppercase',
   },
@@ -553,14 +555,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   expected: {
-    fontSize: 11,
+    fontSize: FontSize.xs,
   },
   input: {
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderRadius: 12,
     borderWidth: 1,
-    fontSize: 14,
+    fontSize: FontSize.sm,
     fontWeight: '500',
   },
   amountWrap: {
@@ -570,7 +572,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 12,
     zIndex: 1,
-    fontSize: 14,
+    fontSize: FontSize.sm,
     fontWeight: '700',
   },
   amountInput: {

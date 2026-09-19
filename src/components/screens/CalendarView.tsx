@@ -7,6 +7,7 @@ import { useFormat } from '@/hooks/use-format';
 import { useTheme } from '@/hooks/use-theme';
 import { Shift, Workplace } from '@/types';
 import { formatDate, formatDuration, toLocalDateString } from '@/utils/timeCalculations';
+import { FontSize } from '@/constants/theme';
 
 interface CalendarViewProps {
   shifts: Shift[];
@@ -254,7 +255,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   monthTitle: {
-    fontSize: 14,
+    fontSize: FontSize.sm,
     fontWeight: '700',
   },
   grid: {
@@ -277,7 +278,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   weekday: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
     fontWeight: '600',
   },
   day: {
@@ -288,7 +289,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   dayText: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
     fontWeight: '500',
   },
   dayTextSelected: {
@@ -315,14 +316,14 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   detailTitle: {
-    fontSize: 14,
+    fontSize: FontSize.sm,
     fontWeight: '700',
   },
   detailSub: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
   },
   empty: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
     textAlign: 'center',
     paddingVertical: 12,
   },
@@ -339,11 +340,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   shiftTime: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
     fontWeight: '600',
   },
   breakText: {
-    fontSize: 11,
+    fontSize: FontSize.xs,
   },
   shiftRight: {
     flexDirection: 'row',
@@ -351,7 +352,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   shiftDuration: {
-    fontSize: 12,
+    fontSize: FontSize.xs,
     fontWeight: '700',
   },
 });
