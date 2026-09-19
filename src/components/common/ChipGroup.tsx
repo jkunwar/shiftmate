@@ -1,6 +1,6 @@
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { Chip } from '@/components/common/Chip';
+import { Chip, ChipVariant } from '@/components/common/Chip';
 import { FontSize } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -15,10 +15,17 @@ interface ChipGroupProps<T extends string> {
   options: ChipOption<T>[];
   value: T;
   onChange: (value: T) => void;
+  variant?: ChipVariant;
 }
 
 /** A scrolling row of chips where exactly one is selected. */
-export function ChipGroup<T extends string>({ label, options, value, onChange }: ChipGroupProps<T>) {
+export function ChipGroup<T extends string>({
+  label,
+  options,
+  value,
+  onChange,
+  variant,
+}: ChipGroupProps<T>) {
   const theme = useTheme();
 
   return (
@@ -31,6 +38,7 @@ export function ChipGroup<T extends string>({ label, options, value, onChange }:
             label={option.label}
             selected={option.value === value}
             onPress={() => onChange(option.value)}
+            variant={variant}
           />
         ))}
       </ScrollView>

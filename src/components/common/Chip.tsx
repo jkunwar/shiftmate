@@ -3,15 +3,21 @@ import { Pressable, StyleSheet, Text } from 'react-native';
 import { useTheme } from '@/hooks/use-theme';
 import { FontSize } from '@/constants/theme';
 
+export type ChipVariant = 'accent' | 'ink';
+
 interface ChipProps {
   label: string;
   selected: boolean;
   onPress: () => void;
+  /** How the selected chip is filled: the accent colour, or the text colour (inverted). */
+  variant?: ChipVariant;
 }
 
-/** A rounded filter option: filled with the accent colour while selected. */
-export function Chip({ label, selected, onPress }: ChipProps) {
+/** A rounded filter option, filled while selected. */
+export function Chip({ label, selected, onPress, variant = 'accent' }: ChipProps) {
   const theme = useTheme();
+  const fill = variant === 'ink' ? theme.text : theme.accent;
+  const onFill = variant === 'ink' ? theme.background : theme.onAccent;
 
   return (
     <Pressable
@@ -21,10 +27,10 @@ export function Chip({ label, selected, onPress }: ChipProps) {
       style={[
         styles.chip,
         selected
-          ? { backgroundColor: theme.accent, borderColor: theme.accent }
+          ? { backgroundColor: fill, borderColor: fill }
           : { backgroundColor: theme.surface, borderColor: theme.border },
       ]}>
-      <Text style={[styles.chipText, { color: selected ? theme.onAccent : theme.textSecondary }]}>
+      <Text style={[styles.chipText, { color: selected ? onFill : theme.textSecondary }]}>
         {label}
       </Text>
     </Pressable>
