@@ -9,6 +9,8 @@ import { applyOps, enqueueOp, isPermanentError, type SyncOp, type SyncOpBody } f
 import { Shift, Workplace } from '@/types';
 
 const RETRY_DELAY_MS = 20_000;
+/** Coming back to the app within this long of the last refresh doesn't download everything again. */
+const FOREGROUND_SYNC_MIN_GAP_MS = 30_000;
 
 /** Sends one queued change to Supabase. 'retry' leaves it queued; 'done' removes it (sent or hopeless). */
 async function runOp(userId: string, op: SyncOp): Promise<'done' | 'retry'> {
@@ -64,6 +66,7 @@ export function useSyncEngine({ userId, setWorkplaces, setShifts }: SyncEngineOp
   const pullingRef = useRef(false);
   const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const syncNowRef = useRef<() => Promise<void>>(async () => {});
+  const lastPullAtRef = useRef(0);
 
   useEffect(() => {
     if (userId) writeStored(STORAGE_KEYS.outbox, { userId, ops });
@@ -127,6 +130,7 @@ export function useSyncEngine({ userId, setWorkplaces, setShifts }: SyncEngineOp
       console.warn('Could not refresh from Supabase:', err);
     } finally {
       pullingRef.current = false;
+      lastPullAtRef.current = Date.now();
       setIsSyncing(false);
       setHasSynced(true);
     }
@@ -152,7 +156,13 @@ export function useSyncEngine({ userId, setWorkplaces, setShifts }: SyncEngineOp
     });
 
     const appStateSub = AppState.addEventListener('change', (state) => {
-      if (state === 'active') void syncNowRef.current();
+      if (state !== 'active') return;
+      // Pending changes are always sent; the full download waits until the data could be stale
+      if (Date.now() - lastPullAtRef.current < FOREGROUND_SYNC_MIN_GAP_MS) {
+        if (opsRef.current.length > 0) void flush();
+        return;
+      }
+      void syncNowRef.current();
     });
 
     return () => {
@@ -160,7 +170,7 @@ export function useSyncEngine({ userId, setWorkplaces, setShifts }: SyncEngineOp
       appStateSub.remove();
       if (retryTimer.current) clearTimeout(retryTimer.current);
     };
-  }, [userId]);
+  }, [userId, flush]);
 
   /** Queues a change for Supabase (signed in only) and starts sending it. */
   const enqueue = (body: SyncOpBody) => {

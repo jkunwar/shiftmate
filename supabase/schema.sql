@@ -50,23 +50,24 @@ alter table public.workplaces enable row level security;
 alter table public.shifts enable row level security;
 
 -- 4. Policies
+-- auth.uid() is wrapped in (select ...) so Postgres evaluates it once per query, not once per row
 drop policy if exists "Users can manage their own workplaces" on public.workplaces;
 drop policy if exists "Users can manage their own shifts" on public.shifts;
 
 create policy "Users can manage their own workplaces"
   on public.workplaces for all
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
+  using ((select auth.uid()) = user_id)
+  with check ((select auth.uid()) = user_id);
 
 -- A shift must belong to the user AND point at one of the user's own workplaces
 create policy "Users can manage their own shifts"
   on public.shifts for all
-  using (auth.uid() = user_id)
+  using ((select auth.uid()) = user_id)
   with check (
-    auth.uid() = user_id
+    (select auth.uid()) = user_id
     and exists (
       select 1 from public.workplaces w
-      where w.id = workplace_id and w.user_id = auth.uid()
+      where w.id = workplace_id and w.user_id = (select auth.uid())
     )
   );
 

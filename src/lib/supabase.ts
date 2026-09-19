@@ -1,5 +1,6 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
+import { fetchAllPages } from './paginate';
 import { secureSessionStorage } from './secure-session-storage';
 import { Shift, Workplace } from '../types';
 
@@ -55,24 +56,61 @@ function mapWorkplaceRow(row: any): Workplace {
   };
 }
 
+const WORKPLACE_COLUMNS = 'id, name, color, hourly_rate, address, usual_schedule, notes';
+const SHIFT_COLUMNS =
+  'id, workplace_id, date, start_time, end_time, break_minutes, hourly_rate, worked_minutes, payment_status, paid_date, actual_paid_amount, notes';
+
+/** Postgres "undefined column": the database is missing a column added in a later version. */
+const isMissingColumn = (error: { code?: string } | null) =>
+  error?.code === '42703' || error?.code === 'PGRST204';
+
+function mapShiftRow(row: any): Shift {
+  return {
+    id: row.id,
+    workplaceId: row.workplace_id,
+    date: row.date,
+    startTime: row.start_time,
+    endTime: row.end_time,
+    breakMinutes: row.break_minutes || 0,
+    hourlyRate: row.hourly_rate != null ? Number(row.hourly_rate) : undefined,
+    workedMinutes: row.worked_minutes,
+    paymentStatus: (row.payment_status as 'paid' | 'unpaid') || 'unpaid',
+    paidDate: row.paid_date || undefined,
+    actualPaidAmount: row.actual_paid_amount ? Number(row.actual_paid_amount) : undefined,
+    notes: row.notes || undefined,
+  };
+}
+
 // Database Service Helpers
 export const supabaseDb = {
   async fetchWorkplaces(userId: string): Promise<Workplace[]> {
     const sb = getSupabase();
     if (!sb) return [];
 
-    const { data, error } = await sb
-      .from('workplaces')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: true });
+    // Only the columns the app uses. A database that hasn't been upgraded yet falls back to '*'.
+    const load = (columns: string) =>
+      fetchAllPages(async (from, to) => {
+        const { data, error } = await sb
+          .from('workplaces')
+          .select(columns)
+          .eq('user_id', userId)
+          // The id breaks ties so paging never skips or repeats a row
+          .order('created_at', { ascending: true })
+          .order('id')
+          .range(from, to);
+        if (error) throw error;
+        return data ?? [];
+      });
 
-    if (error) {
-      console.warn('Error fetching workplaces from Supabase:', error.message);
-      throw error;
+    try {
+      return (await load(WORKPLACE_COLUMNS)).map(mapWorkplaceRow);
+    } catch (err) {
+      if (!isMissingColumn(err as { code?: string })) {
+        console.warn('Error fetching workplaces from Supabase:', (err as Error).message);
+        throw err;
+      }
+      return (await load('*')).map(mapWorkplaceRow);
     }
-
-    return (data || []).map(mapWorkplaceRow);
   },
 
   /** Insert-or-update by id, so a retried request can never create a duplicate. */
@@ -84,7 +122,7 @@ export const supabaseDb = {
       id: wp.id,
       user_id: userId,
       name: wp.name,
-      color: wp.color || '#3B82F6',
+      color: wp.color || '#3E6B99',
       hourly_rate: wp.hourlyRate || 0,
       address: wp.address || null,
       usual_schedule: wp.usualSchedule || null,
@@ -113,31 +151,32 @@ export const supabaseDb = {
     const sb = getSupabase();
     if (!sb) return [];
 
-    const { data, error } = await sb
-      .from('shifts')
-      .select('*')
-      .eq('user_id', userId)
-      .order('date', { ascending: false });
+    const load = (columns: string) =>
+      fetchAllPages(async (from, to) => {
+        const { data, error } = await sb
+          .from('shifts')
+          .select(columns)
+          .eq('user_id', userId)
+          .order('date', { ascending: false })
+          // The id breaks ties so paging never skips or repeats a row
+          .order('id')
+          .range(from, to);
+        if (error) throw error;
+        return data ?? [];
+      });
 
-    if (error) {
-      console.warn('Error fetching shifts from Supabase:', error.message);
-      throw error;
+    let rows: any[];
+    try {
+      rows = await load(SHIFT_COLUMNS);
+    } catch (err) {
+      if (!isMissingColumn(err as { code?: string })) {
+        console.warn('Error fetching shifts from Supabase:', (err as Error).message);
+        throw err;
+      }
+      rows = await load('*');
     }
 
-    return (data || []).map((row) => ({
-      id: row.id,
-      workplaceId: row.workplace_id,
-      date: row.date,
-      startTime: row.start_time,
-      endTime: row.end_time,
-      breakMinutes: row.break_minutes || 0,
-      hourlyRate: row.hourly_rate != null ? Number(row.hourly_rate) : undefined,
-      workedMinutes: row.worked_minutes,
-      paymentStatus: (row.payment_status as 'paid' | 'unpaid') || 'unpaid',
-      paidDate: row.paid_date || undefined,
-      actualPaidAmount: row.actual_paid_amount ? Number(row.actual_paid_amount) : undefined,
-      notes: row.notes || undefined,
-    }));
+    return rows.map(mapShiftRow);
   },
 
   /** Insert-or-update by id, so a retried request can never create a duplicate. */
