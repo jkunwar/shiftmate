@@ -10,11 +10,13 @@ interface FormFieldProps {
   hint?: string;
   /** Anything to put on the right of the label instead of a hint (e.g. quick actions). */
   headerRight?: React.ReactNode;
+  /** A line of explanation under the label. */
+  description?: string;
   children: React.ReactNode;
 }
 
 /** A form control with its uppercase label. */
-export function FormField({ label, hint, headerRight, children }: FormFieldProps) {
+export function FormField({ label, hint, headerRight, description, children }: FormFieldProps) {
   const theme = useTheme();
   const hasHeaderRight = Boolean(hint || headerRight);
 
@@ -28,6 +30,9 @@ export function FormField({ label, hint, headerRight, children }: FormFieldProps
       ) : (
         <Text style={[styles.label, { color: theme.text }]}>{label}</Text>
       )}
+      {description ? (
+        <Text style={[styles.description, { color: theme.textSecondary }]}>{description}</Text>
+      ) : null}
       {children}
     </View>
   );
@@ -51,5 +56,8 @@ const styles = StyleSheet.create({
   hint: {
     fontSize: FontSize.xs,
     fontWeight: '500',
+  },
+  description: {
+    fontSize: FontSize.xs,
   },
 });
