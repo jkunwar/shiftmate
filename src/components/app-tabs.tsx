@@ -1,12 +1,11 @@
 import { TabList, TabSlot, Tabs, TabTrigger, type TabTriggerSlotProps } from 'expo-router/ui';
 import { SymbolView, type SymbolViewProps } from 'expo-symbols';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { SyncBanner } from '@/components/sync-banner';
 import { UndoSnackbar } from '@/components/undo-snackbar';
-import { ThemedText } from '@/components/themed-text';
-import { AddButtonRaise, MaxContentWidth, Spacing } from '@/constants/theme';
+import { AddButtonRaise, FontSize, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAppState } from '@/lib/app-state';
 
@@ -24,10 +23,12 @@ function TabButton({ label, icon, isFocused, ...props }: TabButtonProps) {
 
   return (
     <Pressable {...props} style={({ pressed }) => [styles.tabButton, pressed && styles.pressed]}>
-      <SymbolView tintColor={color} name={icon} size={24} />
-      <ThemedText type="small" maxFontSizeMultiplier={1.2} style={{ color }}>
+      <SymbolView tintColor={color} name={icon} size={22} />
+      <Text
+        maxFontSizeMultiplier={1.2}
+        style={[styles.tabLabel, { color }, isFocused && styles.tabLabelActive]}>
         {label}
-      </ThemedText>
+      </Text>
     </Pressable>
   );
 }
@@ -49,7 +50,13 @@ function AddButton({ bottom }: { bottom: number }) {
         onPress={() => openAddShift()}
         style={({ pressed }) => [
           styles.addButton,
-          { bottom, backgroundColor: theme.accent, borderColor: theme.surface },
+          {
+            bottom,
+            backgroundColor: theme.accent,
+            // The ring matches the bar so the button looks cut into it; the glow lifts it off the bar
+            borderColor: theme.surface,
+            boxShadow: `0 6px 16px ${theme.accent}59`,
+          },
           pressed && styles.pressed,
         ]}>
         <SymbolView
@@ -82,12 +89,12 @@ export default function AppTabs() {
             },
           ]}>
           <TabTrigger name="index" href="/" asChild>
-            <TabButton label="Home" icon={{ ios: 'house.fill', android: 'home', web: 'home' }} />
+            <TabButton label="Home" icon={{ ios: 'house', android: 'home', web: 'home' }} />
           </TabTrigger>
           <TabTrigger name="workplaces" href="/workplaces" asChild>
             <TabButton
               label="Workplaces"
-              icon={{ ios: 'building.2.fill', android: 'business', web: 'business' }}
+              icon={{ ios: 'briefcase', android: 'work', web: 'work' }}
             />
           </TabTrigger>
           {/* Keeps the middle of the bar free for the raised button */}
@@ -95,13 +102,13 @@ export default function AppTabs() {
           <TabTrigger name="reports" href="/reports" asChild>
             <TabButton
               label="Reports"
-              icon={{ ios: 'chart.bar.fill', android: 'bar_chart', web: 'bar_chart' }}
+              icon={{ ios: 'doc.text', android: 'description', web: 'description' }}
             />
           </TabTrigger>
           <TabTrigger name="settings" href="/settings" asChild>
             <TabButton
               label="Settings"
-              icon={{ ios: 'gearshape.fill', android: 'settings', web: 'settings' }}
+              icon={{ ios: 'gearshape', android: 'settings', web: 'settings' }}
             />
           </TabTrigger>
         </TabList>
@@ -128,8 +135,15 @@ const styles = StyleSheet.create({
   tabButton: {
     flex: 1,
     alignItems: 'center',
-    gap: Spacing.one,
+    gap: 3,
     paddingVertical: Spacing.one,
+  },
+  tabLabel: {
+    fontSize: FontSize.xs,
+    fontWeight: '500',
+  },
+  tabLabelActive: {
+    fontWeight: '700',
   },
   addSpacer: {
     flex: 1,
@@ -144,7 +158,6 @@ const styles = StyleSheet.create({
     borderWidth: 4,
     alignItems: 'center',
     justifyContent: 'center',
-    boxShadow: '0 4px 10px rgba(0, 0, 0, 0.25)',
   },
   pressed: {
     opacity: 0.7,
