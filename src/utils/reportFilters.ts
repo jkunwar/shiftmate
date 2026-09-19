@@ -1,0 +1,76 @@
+import { Shift, UserPreferences, Workplace } from '@/types';
+import { DateRange, formatRange, getMonthRange, getWeekRange } from '@/utils/dateRanges';
+import { shiftEarnings } from '@/utils/timeCalculations';
+
+export type DatePreset = 'this-week' | 'last-week' | 'this-month' | 'last-month' | 'custom';
+export type PaymentFilter = 'all' | 'paid' | 'unpaid';
+
+/** A report's date range plus the label shown for it (and printed on exports). */
+export interface ReportRange extends DateRange {
+  label: string;
+}
+
+/** The date boundaries for a preset, relative to `today`. */
+export function resolveDateRange(
+  preset: DatePreset,
+  today: string,
+  weekStartsOn: UserPreferences['weekStartsOn'],
+  custom: DateRange,
+): ReportRange {
+  switch (preset) {
+    case 'this-week': {
+      const range = getWeekRange(today, weekStartsOn, 0);
+      return { ...range, label: `This Week (${formatRange(range)})` };
+    }
+    case 'last-week': {
+      const range = getWeekRange(today, weekStartsOn, -1);
+      return { ...range, label: `Last Week (${formatRange(range)})` };
+    }
+    case 'last-month': {
+      const { start, end, label } = getMonthRange(today, -1);
+      return { start, end, label };
+    }
+    case 'custom':
+      return { start: custom.start, end: custom.end, label: `${custom.start} to ${custom.end}` };
+    case 'this-month':
+    default: {
+      const { start, end, label } = getMonthRange(today, 0);
+      return { start, end, label };
+    }
+  }
+}
+
+export interface ReportFilter {
+  range: DateRange;
+  /** A workplace id, or 'all'. */
+  workplaceId: string;
+  payment: PaymentFilter;
+}
+
+/** The shifts matching the filter, newest first. */
+export function filterShifts(shifts: Shift[], { range, workplaceId, payment }: ReportFilter): Shift[] {
+  return shifts
+    .filter((shift) => {
+      if (shift.date < range.start || shift.date > range.end) return false;
+      if (workplaceId !== 'all' && shift.workplaceId !== workplaceId) return false;
+      if (payment !== 'all' && shift.paymentStatus !== payment) return false;
+      return true;
+    })
+    .sort((a, b) => b.date.localeCompare(a.date));
+}
+
+/** Total worked minutes and estimated earnings for a list of shifts. */
+export function summarizeShifts(shifts: Shift[], workplaces: Workplace[]) {
+  return shifts.reduce(
+    (total, shift) => ({
+      minutes: total.minutes + shift.workedMinutes,
+      earnings:
+        total.earnings +
+        shiftEarnings(
+          shift,
+          workplaces.find((w) => w.id === shift.workplaceId),
+        ),
+    }),
+    { minutes: 0, earnings: 0 },
+  );
+}
