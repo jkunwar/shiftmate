@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { SyncBanner } from '@/components/sync-banner';
 import { UndoSnackbar } from '@/components/undo-snackbar';
-import { AddButtonRaise, FontSize, MaxContentWidth, Spacing } from '@/constants/theme';
+import { AddButtonRaise, FontSize, Layout, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAppState } from '@/lib/app-state';
 
@@ -128,7 +128,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-around',
     width: '100%',
-    maxWidth: MaxContentWidth,
+    maxWidth: Layout.maxContentWidth,
     alignSelf: 'center',
     borderTopWidth: StyleSheet.hairlineWidth,
   },
