@@ -2,10 +2,12 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 import { fetchAllPages } from './paginate';
 import { secureSessionStorage } from './secure-session-storage';
+import { normalizeSupabaseKey, normalizeSupabaseUrl } from './supabase-config';
 import { Shift, Workplace } from '../types';
 
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
+// A malformed value counts as "not configured" (local-only mode) instead of crashing at start-up
+const supabaseUrl = normalizeSupabaseUrl(process.env.EXPO_PUBLIC_SUPABASE_URL);
+const supabaseAnonKey = normalizeSupabaseKey(process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY);
 
 let client: SupabaseClient | null = null;
 

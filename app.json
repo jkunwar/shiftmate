@@ -48,6 +48,13 @@
     "platforms": [
       "ios",
       "android"
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "61c802ab-3add-4616-97ad-66574d19da91"
+      }
+    },
+    "owner": "jkunwar"
   }
 }

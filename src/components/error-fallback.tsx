@@ -1,6 +1,6 @@
 import { type ErrorBoundaryProps } from 'expo-router';
-import { useEffect } from 'react';
-import { Pressable, StyleSheet, Text, useColorScheme, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, useColorScheme, View } from 'react-native';
 
 import { Colors, FontSize, Spacing } from '@/constants/theme';
 import { reportError } from '@/lib/error-reporting';
@@ -11,6 +11,7 @@ import { reportError } from '@/lib/error-reporting';
  */
 export function ErrorFallback({ error, retry }: ErrorBoundaryProps) {
   const palette = Colors[useColorScheme() === 'dark' ? 'dark' : 'light'];
+  const [showDetails, setShowDetails] = useState(false);
 
   useEffect(() => {
     reportError(error, 'render');
@@ -33,6 +34,23 @@ export function ErrorFallback({ error, retry }: ErrorBoundaryProps) {
         ]}>
         <Text style={[styles.buttonLabel, { color: palette.onAccent }]}>Try again</Text>
       </Pressable>
+
+      {/* The real error, so a problem on a device can be reported or debugged without a computer */}
+      <Pressable accessibilityRole="button" onPress={() => setShowDetails((shown) => !shown)}>
+        <Text style={[styles.detailsToggle, { color: palette.accent }]}>
+          {showDetails ? 'Hide details' : 'Show details'}
+        </Text>
+      </Pressable>
+      {showDetails ? (
+        <ScrollView
+          style={[styles.details, { backgroundColor: palette.backgroundElement }]}
+          contentContainerStyle={styles.detailsContent}>
+          <Text selectable style={[styles.detailsText, { color: palette.text }]}>
+            {error.message}
+            {error.stack ? `\n\n${error.stack.split('\n').slice(0, 12).join('\n')}` : ''}
+          </Text>
+        </ScrollView>
+      ) : null}
     </View>
   );
 }
@@ -55,4 +73,8 @@ const styles = StyleSheet.create({
   },
   buttonLabel: { fontSize: FontSize.md, fontWeight: '600' },
   pressed: { opacity: 0.7 },
+  detailsToggle: { fontSize: FontSize.sm, fontWeight: '600' },
+  details: { maxHeight: 220, width: '100%', borderRadius: 12 },
+  detailsContent: { padding: Spacing.three },
+  detailsText: { fontSize: FontSize.xs, lineHeight: 16 },
 });
