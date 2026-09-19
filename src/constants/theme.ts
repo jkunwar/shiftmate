@@ -1,69 +1,70 @@
 import { Platform } from 'react-native';
 
 export const Colors = {
-  // Slate blue: calm cool neutrals with a blue accent. Green is only for money and "paid", ochre
-  // only for "unpaid" and red only for danger, so each colour keeps a single meaning.
+  // Warm off-white and ink with a muted, brownish terracotta. Terracotta is well away from the red
+  // used for danger, so a primary action never looks like a destructive one. Green is only for
+  // money and "paid", ochre only for "unpaid".
   light: {
-    text: '#17202A',
-    background: '#F6F8FA',
-    backgroundElement: '#EDF1F4',
-    backgroundSelected: '#E3E8ED',
-    textSecondary: '#66727D',
+    text: '#292725',
+    background: '#F7F5F2',
+    backgroundElement: '#EEEAE5',
+    backgroundSelected: '#E4DFD9',
+    textSecondary: '#706B66',
 
     surface: '#FFFFFF',
-    surfaceSecondary: '#FAFBFC',
-    border: '#E1E6EA',
-    borderStrong: '#CBD3DA',
+    surfaceSecondary: '#FBFAF8',
+    border: '#DDD8D2',
+    borderStrong: '#CBC5BE',
 
-    accent: '#356D9A',
-    accentPressed: '#2B5A80',
-    accentSoft: '#E8F1F7',
+    accent: '#9A5B45',
+    accentPressed: '#7F4938',
+    accentSoft: '#F6ECE8',
     onAccent: '#FFFFFF',
 
-    success: '#347A55',
-    successPressed: '#286443',
-    successSoft: '#EAF4EE',
+    success: '#28745A',
+    successPressed: '#1F5E49',
+    successSoft: '#E6F2EC',
 
-    warning: '#A16207',
-    warningPressed: '#854D0E',
-    warningSoft: '#FFF6E3',
+    warning: '#9C6200',
+    warningPressed: '#7F4E00',
+    warningSoft: '#FFF4DC',
 
     danger: '#B42318',
     dangerPressed: '#912018',
     dangerSoft: '#FDECEA',
 
-    info: '#356D9A',
-    infoSoft: '#E8F1F7',
+    info: '#496F9F',
+    infoSoft: '#EEF4FA',
 
-    // The week summary card: a deep navy panel
-    hero: '#243B53',
+    // The week summary card: a deep warm brown panel
+    hero: '#3A3430',
     heroText: '#FFFFFF',
-    heroMuted: '#B8C8D7',
-    heroChip: '#304D67',
-    heroPositive: '#A8D3B6',
+    heroMuted: '#C8C0B8',
+    heroChip: '#514943',
+    heroPositive: '#A9D5B8',
   },
 
   dark: {
-    text: '#F1F5F8',
-    background: '#101519',
-    backgroundElement: '#192126',
-    backgroundSelected: '#252F36',
-    textSecondary: '#98A6B1',
+    text: '#F3F0EC',
+    background: '#151311',
+    backgroundElement: '#211E1B',
+    backgroundSelected: '#2C2824',
+    textSecondary: '#A7A09A',
 
-    surface: '#161D22',
-    surfaceSecondary: '#1C252B',
-    border: '#2B353D',
-    borderStrong: '#3B474F',
+    surface: '#1B1917',
+    surfaceSecondary: '#211F1C',
+    border: '#332F2B',
+    borderStrong: '#443F39',
 
-    accent: '#6FA6CF',
-    accentPressed: '#5B91BC',
-    accentSoft: '#182B39',
-    // Dark text on the light accent reads better than white does
-    onAccent: '#0E1820',
+    accent: '#D0917A',
+    accentPressed: '#BE7C65',
+    accentSoft: '#33231E',
+    // Dark text on the light terracotta reads better than white does
+    onAccent: '#1F130E',
 
-    success: '#70B88B',
-    successPressed: '#5B9F75',
-    successSoft: '#18291F',
+    success: '#6BBF9E',
+    successPressed: '#57A888',
+    successSoft: '#17291F',
 
     warning: '#E4B45F',
     warningPressed: '#D39D3D',
@@ -73,14 +74,14 @@ export const Colors = {
     dangerPressed: '#E57268',
     dangerSoft: '#321B19',
 
-    info: '#6FA6CF',
-    infoSoft: '#182B39',
+    info: '#82A9D3',
+    infoSoft: '#192635',
 
-    hero: '#1F3447',
-    heroText: '#F1F5F8',
-    heroMuted: '#AFC2D1',
-    heroChip: '#29445A',
-    heroPositive: '#8FC9A3',
+    hero: '#302A27',
+    heroText: '#F3F0EC',
+    heroMuted: '#BDB4AC',
+    heroChip: '#443B36',
+    heroPositive: '#91C9A5',
   },
 } as const;
 
