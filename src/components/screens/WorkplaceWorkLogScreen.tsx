@@ -52,7 +52,8 @@ export const WorkplaceWorkLogScreen: React.FC<WorkplaceWorkLogScreenProps> = ({
   const [selectedMonthKey, setSelectedMonthKey] = useState(todayMonthKey);
   const [viewMode, setViewMode] = useState<'log' | 'calendar'>('log');
   const [confirmingDelete, setConfirmingDelete] = useState(false);
-  const [collapsedWeeks, setCollapsedWeeks] = useState<Record<number, boolean>>({});
+  // Weeks the user has opened or closed by hand; the rest follow the default (only the first is open)
+  const [openWeeks, setOpenWeeks] = useState<Record<string, boolean>>({});
 
   const workplaceShifts = useMemo(
     () => shifts.filter((s) => s.workplaceId === workplace.id),
@@ -68,8 +69,14 @@ export const WorkplaceWorkLogScreen: React.FC<WorkplaceWorkLogScreenProps> = ({
   const month =
     monthGroups.find((m) => m.monthKey === selectedMonthKey) ?? emptyMonthGroup(selectedMonthKey);
 
-  const toggleWeek = (weekNumber: number) =>
-    setCollapsedWeeks((prev) => ({ ...prev, [weekNumber]: !prev[weekNumber] }));
+  const isWeekOpen = (weekNumber: number, index: number) =>
+    openWeeks[`${month.monthKey}:${weekNumber}`] ?? index === 0;
+
+  const toggleWeek = (weekNumber: number, index: number) =>
+    setOpenWeeks((prev) => ({
+      ...prev,
+      [`${month.monthKey}:${weekNumber}`]: !isWeekOpen(weekNumber, index),
+    }));
 
   return (
     <>
@@ -128,12 +135,12 @@ export const WorkplaceWorkLogScreen: React.FC<WorkplaceWorkLogScreenProps> = ({
           />
         ) : (
           <View>
-            {month.weeks.map((week) => (
+            {month.weeks.map((week, index) => (
               <WeekSection
                 key={week.weekNumber}
                 week={week}
-                collapsed={!!collapsedWeeks[week.weekNumber]}
-                onToggle={() => toggleWeek(week.weekNumber)}
+                collapsed={!isWeekOpen(week.weekNumber, index)}
+                onToggle={() => toggleWeek(week.weekNumber, index)}
                 onSelectShift={onSelectShift}
               />
             ))}

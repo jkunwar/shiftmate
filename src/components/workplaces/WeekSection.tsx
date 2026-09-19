@@ -53,7 +53,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: 14,
-    paddingHorizontal: 4,
+    // Puts the chevron directly above the timeline's line
+    paddingHorizontal: 7,
     borderRadius: 8,
   },
   title: {

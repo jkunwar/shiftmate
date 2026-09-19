@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { PaymentStatusBadge } from '@/components/common/PaymentStatusBadge';
 import { FontSize } from '@/constants/theme';
 import { useFormat } from '@/hooks/use-format';
 import { useTheme } from '@/hooks/use-theme';
@@ -21,11 +22,10 @@ export const ShiftTimeline: React.FC<ShiftTimelineProps> = ({ shifts, onSelectSh
   const { time } = useFormat();
 
   return (
-    <View>
+    <View style={styles.timeline}>
       {shifts.map((shift, index) => {
         const unpaid = shift.paymentStatus === 'unpaid';
         const statusColor = unpaid ? theme.warning : theme.success;
-        const isFirst = index === 0;
         const isLast = index === shifts.length - 1;
         const day = `${formatDate(shift.date, 'dayOfWeek').slice(0, 3)}, ${formatDate(shift.date, 'short')}`;
 
@@ -44,7 +44,6 @@ export const ShiftTimeline: React.FC<ShiftTimelineProps> = ({ shifts, onSelectSh
                 style={[
                   styles.line,
                   { backgroundColor: theme.border },
-                  isFirst && styles.lineFromDot,
                   isLast && styles.lineToDot,
                 ]}
               />
@@ -63,7 +62,7 @@ export const ShiftTimeline: React.FC<ShiftTimelineProps> = ({ shifts, onSelectSh
               <Text style={[styles.duration, { color: theme.text }]}>
                 {formatDuration(shift.workedMinutes)}
               </Text>
-              <Text style={[styles.status, { color: statusColor }]}>{unpaid ? 'Unpaid' : 'Paid'}</Text>
+              <PaymentStatusBadge status={shift.paymentStatus} size="sm" />
             </View>
           </Pressable>
         );
@@ -73,6 +72,9 @@ export const ShiftTimeline: React.FC<ShiftTimelineProps> = ({ shifts, onSelectSh
 };
 
 const styles = StyleSheet.create({
+  timeline: {
+    marginTop: 4,
+  },
   item: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -92,10 +94,7 @@ const styles = StyleSheet.create({
     bottom: -10,
     width: 2,
   },
-  // The line starts at the first dot and stops at the last one instead of sticking out
-  lineFromDot: {
-    top: '50%',
-  },
+  // The line runs up to the week title but stops at the last dot instead of sticking out
   lineToDot: {
     bottom: '50%',
   },
@@ -119,14 +118,10 @@ const styles = StyleSheet.create({
   },
   trailing: {
     alignItems: 'flex-end',
-    gap: 2,
+    gap: 4,
   },
   duration: {
     fontSize: FontSize.sm,
     fontWeight: '700',
-  },
-  status: {
-    fontSize: FontSize.xs,
-    fontWeight: '600',
   },
 });
