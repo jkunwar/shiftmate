@@ -3,11 +3,11 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { PaymentStatusBadge } from '@/components/common/PaymentStatusBadge';
+import { FontSize } from '@/constants/theme';
 import { useFormat } from '@/hooks/use-format';
 import { useTheme } from '@/hooks/use-theme';
 import { Shift, Workplace } from '@/types';
 import { formatDate, formatDuration } from '@/utils/timeCalculations';
-import { FontSize } from '@/constants/theme';
 import { workplaceColor } from '@/utils/workplaceColor';
 
 interface ShiftRowProps {
