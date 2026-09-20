@@ -6,6 +6,7 @@ import { PaymentStatus, Shift, Workplace } from '@/types';
 import {
   computeWorkedTime,
   initialFormValues,
+  isFutureDate,
   paidShiftPayChanged,
   parseRate,
   rateToInput,
@@ -102,50 +103,63 @@ export function useShiftForm({
       onClose();
     };
 
-    // Two shifts at the same time is usually a slip, but sometimes intended, so ask instead of blocking
-    const saveUnlessOverlapping = () => {
-      const overlapping = findOverlappingShift(
-        { date, startTime, endTime },
-        existingShifts,
-        initialShift?.id,
-      );
-      if (overlapping && Platform.OS !== 'web') {
-        const where =
-          workplaces.find((w) => w.id === overlapping.workplaceId)?.name ?? 'another shift';
-        Alert.alert(
-          'Overlapping shift',
-          `This overlaps ${where} (${time(overlapping.startTime)} – ${time(overlapping.endTime)}) on ${formatDate(overlapping.date, 'medium')}. Save it anyway?`,
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Save Anyway', onPress: save },
-          ],
-        );
-        return;
-      }
-      save();
-    };
+    // Things that are usually a slip but sometimes intended, so they are asked about instead of
+    // blocked. Each answer of "yes" moves on to the next question, then the save.
+    const questions: { title: string; message: string; confirmLabel: string }[] = [];
+
+    // A shift that hasn't happened yet would count toward hours and the unpaid balance right away.
+    // An existing future shift is only asked about again if its date was changed.
+    if (isFutureDate(date, toLocalDateString()) && initialShift?.date !== date) {
+      questions.push({
+        title: 'Shift is in the future',
+        message: `${formatDate(date, 'medium')} hasn't happened yet. The shift will count toward your hours and unpaid balance right away. Save it anyway?`,
+        confirmLabel: 'Save Anyway',
+      });
+    }
 
     // A paid shift whose hours, rate or workplace change no longer matches what was paid
     if (
-      Platform.OS !== 'web' &&
       paidShiftPayChanged(initialShift, paymentStatus, workplaces, {
         workplaceId,
         workedMinutes: worked.workedMinutes,
         hourlyRate,
       })
     ) {
-      Alert.alert(
-        'Change a paid shift?',
-        'This shift is marked paid. Changing its hours, rate or workplace updates the estimate, but the amount you received stays as it was.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Save Changes', onPress: saveUnlessOverlapping },
-        ],
-      );
-      return;
+      questions.push({
+        title: 'Change a paid shift?',
+        message:
+          'This shift is marked paid. Changing its hours, rate or workplace updates the estimate, but the amount you received stays as it was.',
+        confirmLabel: 'Save Changes',
+      });
     }
 
-    saveUnlessOverlapping();
+    const overlapping = findOverlappingShift(
+      { date, startTime, endTime },
+      existingShifts,
+      initialShift?.id,
+    );
+    if (overlapping) {
+      const where =
+        workplaces.find((w) => w.id === overlapping.workplaceId)?.name ?? 'another shift';
+      questions.push({
+        title: 'Overlapping shift',
+        message: `This overlaps ${where} (${time(overlapping.startTime)} – ${time(overlapping.endTime)}) on ${formatDate(overlapping.date, 'medium')}. Save it anyway?`,
+        confirmLabel: 'Save Anyway',
+      });
+    }
+
+    const ask = (index: number) => {
+      const question = questions[index];
+      if (!question || Platform.OS === 'web') {
+        save();
+        return;
+      }
+      Alert.alert(question.title, question.message, [
+        { text: 'Cancel', style: 'cancel' },
+        { text: question.confirmLabel, onPress: () => ask(index + 1) },
+      ]);
+    };
+    ask(0);
   };
 
   return {

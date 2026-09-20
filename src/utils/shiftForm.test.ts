@@ -2,6 +2,7 @@ import { shift, workplace } from '@/__fixtures__/shifts';
 import {
   computeWorkedTime,
   initialFormValues,
+  isFutureDate,
   isValidDate,
   paidShiftPayChanged,
   parseRate,
@@ -167,5 +168,14 @@ describe('paidShiftPayChanged', () => {
   it('compares against the workplace rate when the shift has none saved', () => {
     const noRate = { ...paid, hourlyRate: undefined };
     expect(paidShiftPayChanged(noRate, 'paid', [cafe], same)).toBe(false);
+  });
+});
+
+describe('isFutureDate', () => {
+  it('is true only for days after today', () => {
+    expect(isFutureDate('2026-09-21', '2026-09-20')).toBe(true);
+    expect(isFutureDate('2027-01-01', '2026-12-31')).toBe(true);
+    expect(isFutureDate('2026-09-20', '2026-09-20')).toBe(false);
+    expect(isFutureDate('2026-09-19', '2026-09-20')).toBe(false);
   });
 });

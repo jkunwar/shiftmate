@@ -14,6 +14,9 @@ export function isValidDate(value: string): boolean {
   );
 }
 
+/** True when `date` is after `today` (both YYYY-MM-DD, which sort as text). */
+export const isFutureDate = (date: string, today: string) => date > today;
+
 /** Shows a rate in the input, leaving it blank when there isn't one. */
 export function rateToInput(rate?: number): string {
   return rate ? rate.toFixed(2) : '';
