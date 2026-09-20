@@ -5,6 +5,7 @@ import { Appearance } from 'react-native';
 
 import { demoPreferences, demoShifts, demoUser, demoWorkplaces } from '@/data/demo';
 import { useAuth } from '@/lib/auth';
+import { reportDatabaseError } from '@/lib/error-reporting';
 import { readStored, STORAGE_KEYS, writeStored } from '@/lib/storage';
 import { useModalState, type ShiftEditorState, type WorkplaceEditorState } from '@/lib/state/use-modal-state';
 import { useReminders } from '@/lib/state/use-reminders';
@@ -176,7 +177,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       try {
         await supabaseDb.deleteAccount();
       } catch (err) {
-        console.warn('Failed to delete the account:', err);
+        reportDatabaseError(err, 'delete_account');
         const missing = (err as { code?: string } | null)?.code === 'PGRST202';
         return missing
           ? 'Account deletion is not set up on the server yet. Run the latest SQL schema in Supabase.'

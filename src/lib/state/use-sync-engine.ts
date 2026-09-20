@@ -3,6 +3,7 @@ import { randomUUID } from 'expo-crypto';
 import { Dispatch, SetStateAction, useCallback, useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 
+import { reportDatabaseError } from '@/lib/error-reporting';
 import { readStored, STORAGE_KEYS, writeStored } from '@/lib/storage';
 import { supabaseDb } from '@/lib/supabase';
 import { applyOps, enqueueOp, isPermanentError, type SyncOp, type SyncOpBody } from '@/lib/sync';
@@ -31,8 +32,9 @@ async function runOp(userId: string, op: SyncOp): Promise<'done' | 'retry'> {
     }
     return 'done';
   } catch (err) {
+    reportDatabaseError(err, op.type);
     if (isPermanentError(err)) {
-      console.warn('Dropping a change Supabase rejected:', op.type, err);
+      console.warn('Dropping a change Supabase rejected:', op.type);
       return 'done';
     }
     return 'retry';
@@ -127,7 +129,7 @@ export function useSyncEngine({ userId, setWorkplaces, setShifts }: SyncEngineOp
       setShifts(merged.shifts);
     } catch (err) {
       // Offline or unreachable: keep working from the local copy
-      console.warn('Could not refresh from Supabase:', err);
+      reportDatabaseError(err, 'pull');
     } finally {
       pullingRef.current = false;
       lastPullAtRef.current = Date.now();

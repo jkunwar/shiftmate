@@ -1,5 +1,7 @@
 import * as Sentry from '@sentry/react-native';
 
+import { classifyDatabaseError, createOncePerKey } from '@/lib/database-errors';
+
 const dsn = (process.env.EXPO_PUBLIC_SENTRY_DSN ?? '').trim();
 
 /** Reports go to Sentry only from real builds with a DSN; development just logs to the console. */
@@ -36,6 +38,37 @@ export function reportError(error: unknown, context?: string): void {
   const err = error instanceof Error ? error : new Error(String(error));
   console.error(context ? `[${context}]` : '[error]', err);
   if (enabled) Sentry.captureException(err, context ? { tags: { context } } : undefined);
+}
+
+const firstTime = createOncePerKey();
+
+/**
+ * Records a failed database call. Normal trouble (offline, expired session, server hiccup) becomes
+ * a breadcrumb, which only adds context to a later real error. Data, permission and schema errors
+ * become one Sentry event per kind per app session.
+ *
+ * Only the operation and the error code are sent, never the message or details: Postgres errors can
+ * quote the offending row, which here could hold shift notes, workplace names or pay amounts.
+ */
+export function reportDatabaseError(error: unknown, operation: string): void {
+  const { kind, code } = classifyDatabaseError(error);
+  console.warn(`[database:${operation}]`, error);
+  if (!enabled) return;
+
+  Sentry.addBreadcrumb({
+    category: 'database',
+    level: 'warning',
+    message: `${operation} failed (${code})`,
+    data: { operation, code },
+  });
+
+  if (kind !== 'report' || !firstTime(`${operation}:${code}`)) return;
+  Sentry.captureMessage(`Database error ${code} in ${operation}`, {
+    level: 'error',
+    tags: { context: 'database', operation, code },
+    // Group by what failed and how, whatever the wording of the message
+    fingerprint: ['database', operation, code],
+  });
 }
 
 /** Ties reports to an anonymous account id (never an email or name); null when signed out. */

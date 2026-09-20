@@ -1,5 +1,6 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
+import { reportDatabaseError } from './error-reporting';
 import { fetchAllPages } from './paginate';
 import { secureSessionStorage } from './secure-session-storage';
 import { normalizeSupabaseKey, normalizeSupabaseUrl } from './supabase-config';
@@ -111,6 +112,8 @@ export const supabaseDb = {
         console.warn('Error fetching workplaces from Supabase:', (err as Error).message);
         throw err;
       }
+      // The database is missing a newer column: worth knowing, though the app carries on with '*'
+      reportDatabaseError(err, 'fetch_workplaces');
       return (await load('*')).map(mapWorkplaceRow);
     }
   },
@@ -175,6 +178,7 @@ export const supabaseDb = {
         console.warn('Error fetching shifts from Supabase:', (err as Error).message);
         throw err;
       }
+      reportDatabaseError(err, 'fetch_shifts');
       rows = await load('*');
     }
 
