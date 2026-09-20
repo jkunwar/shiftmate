@@ -1,17 +1,26 @@
-import { Clock, MapPin, Pencil, Trash2 } from 'lucide-react-native';
+import { CheckCircle2, Clock, MapPin, Pencil, Trash2 } from 'lucide-react-native';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { SegmentedControl } from '@/components/common/SegmentedControl';
 import { MonthSwitcher } from '@/components/workplaces/MonthSwitcher';
 import { FontSize } from '@/constants/theme';
 import { useFormat } from '@/hooks/use-format';
 import { useTheme } from '@/hooks/use-theme';
-import { MonthGroup, Workplace } from '@/types';
+import { Workplace } from '@/types';
 import { formatDuration } from '@/utils/timeCalculations';
+import { WorkplaceSummary } from '@/utils/workplaceTotals';
 import { workplaceColor } from '@/utils/workplaceColor';
+
+export type SummaryScope = 'month' | 'all';
 
 interface WorkplaceSummaryCardProps {
   workplace: Workplace;
-  month: MonthGroup;
+  /** The month the switcher (and the log below) is on, e.g. "September 2026". */
+  monthLabel: string;
+  /** Totals shown in the tiles: for that month, or for the workplace's whole history. */
+  stats: WorkplaceSummary;
+  scope: SummaryScope;
+  onScopeChange: (scope: SummaryScope) => void;
   onPreviousMonth: () => void;
   onNextMonth: () => void;
   onEdit?: () => void;
@@ -21,7 +30,10 @@ interface WorkplaceSummaryCardProps {
 /** The workplace, its month switcher, that month's totals and what is still unpaid. */
 export function WorkplaceSummaryCard({
   workplace,
-  month,
+  monthLabel,
+  stats,
+  scope,
+  onScopeChange,
   onPreviousMonth,
   onNextMonth,
   onEdit,
@@ -77,25 +89,46 @@ export function WorkplaceSummaryCard({
         </Pressable>
       </View>
 
-      <MonthSwitcher label={month.monthLabel} onPrevious={onPreviousMonth} onNext={onNextMonth} />
+      {/* The switcher below chooses the month of the log; the tiles can cover that month or everything */}
+      <MonthSwitcher label={monthLabel} onPrevious={onPreviousMonth} onNext={onNextMonth} />
 
-      <View style={[styles.stats, { borderTopColor: theme.border }]}>
-        <Stat label="Worked" value={formatDuration(month.totalMinutes)} />
-        <Stat label="Shifts" value={String(month.shiftCount)} />
-        <Stat label="Estimated" value={money(month.totalEarnings)} />
+      <View style={[styles.scope, { borderTopColor: theme.border }]}>
+        <SegmentedControl
+          selectedTone="accent"
+          options={[
+            { value: 'month', label: monthLabel },
+            { value: 'all', label: 'All time' },
+          ]}
+          value={scope}
+          onChange={onScopeChange}
+        />
       </View>
 
-      {month.unpaidMinutes > 0 ? (
-        <View style={[styles.unpaid, { borderTopColor: theme.border }]}>
-          <View style={styles.unpaidLabel}>
+      <View style={styles.stats}>
+        <Stat label="Worked" value={formatDuration(stats.minutes)} />
+        <Stat label="Shifts" value={String(stats.shiftCount)} />
+        <Stat label="Estimated" value={money(stats.estimated)} />
+      </View>
+
+      {stats.received > 0 ? (
+        <View style={[styles.line, { borderTopColor: theme.border }]}>
+          <View style={styles.lineLabel}>
+            <CheckCircle2 color={theme.success} size={14} />
+            <Text style={[styles.lineText, { color: theme.success }]}>Received</Text>
+          </View>
+          <Text style={[styles.lineAmount, { color: theme.success }]}>{money(stats.received)}</Text>
+        </View>
+      ) : null}
+
+      {stats.unpaidMinutes > 0 ? (
+        <View style={[styles.line, { borderTopColor: theme.border }]}>
+          <View style={styles.lineLabel}>
             <Clock color={theme.warning} size={14} />
-            <Text style={[styles.unpaidText, { color: theme.warning }]}>
-              {formatDuration(month.unpaidMinutes)} unpaid
+            <Text style={[styles.lineText, { color: theme.warning }]}>
+              {formatDuration(stats.unpaidMinutes)} unpaid
             </Text>
           </View>
-          <Text style={[styles.unpaidAmount, { color: theme.warning }]}>
-            {money(month.unpaidEarnings)}
-          </Text>
+          <Text style={[styles.lineAmount, { color: theme.warning }]}>{money(stats.unpaidAmount)}</Text>
         </View>
       ) : null}
     </View>
@@ -157,12 +190,16 @@ const styles = StyleSheet.create({
     padding: 6,
     borderRadius: 8,
   },
+  scope: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    alignItems: 'flex-start',
+  },
   stats: {
     flexDirection: 'row',
     gap: 8,
     marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
   },
   stat: {
     flex: 1,
@@ -175,7 +212,7 @@ const styles = StyleSheet.create({
     fontSize: FontSize.md,
     fontWeight: '700',
   },
-  unpaid: {
+  line: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -183,16 +220,16 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     borderTopWidth: 1,
   },
-  unpaidLabel: {
+  lineLabel: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
   },
-  unpaidText: {
+  lineText: {
     fontSize: FontSize.xs,
     fontWeight: '500',
   },
-  unpaidAmount: {
+  lineAmount: {
     fontSize: FontSize.xs,
     fontWeight: '700',
   },

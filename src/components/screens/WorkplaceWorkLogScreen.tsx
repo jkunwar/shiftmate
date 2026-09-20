@@ -9,13 +9,14 @@ import { useRefreshControl } from '@/components/common/refresh-control';
 import { SegmentedControl } from '@/components/common/SegmentedControl';
 import { AddShiftButton } from '@/components/workplaces/AddShiftButton';
 import { WeekSection } from '@/components/workplaces/WeekSection';
-import { WorkplaceSummaryCard } from '@/components/workplaces/WorkplaceSummaryCard';
+import { SummaryScope, WorkplaceSummaryCard } from '@/components/workplaces/WorkplaceSummaryCard';
 import { BottomTabInset, FontSize } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useToday } from '@/hooks/use-today';
 import { Shift, Workplace } from '@/types';
 import { emptyMonthGroup, shiftMonthKey } from '@/utils/monthNav';
 import { groupShiftsByMonthAndWeek } from '@/utils/timeCalculations';
+import { summarizeWorkplaceShifts } from '@/utils/workplaceTotals';
 import { CalendarView } from './CalendarView';
 
 interface WorkplaceWorkLogScreenProps {
@@ -51,6 +52,7 @@ export const WorkplaceWorkLogScreen: React.FC<WorkplaceWorkLogScreenProps> = ({
   const todayMonthKey = useToday().slice(0, 7);
   const [selectedMonthKey, setSelectedMonthKey] = useState(todayMonthKey);
   const [viewMode, setViewMode] = useState<'log' | 'calendar'>('log');
+  const [summaryScope, setSummaryScope] = useState<SummaryScope>('month');
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   // Weeks the user has opened or closed by hand; the rest follow the default (only the first is open)
   const [openWeeks, setOpenWeeks] = useState<Record<string, boolean>>({});
@@ -68,6 +70,15 @@ export const WorkplaceWorkLogScreen: React.FC<WorkplaceWorkLogScreenProps> = ({
 
   const month =
     monthGroups.find((m) => m.monthKey === selectedMonthKey) ?? emptyMonthGroup(selectedMonthKey);
+
+  // Totals are worked out from the shifts already on the device; nothing is stored
+  const stats = useMemo(() => {
+    const inScope =
+      summaryScope === 'all'
+        ? workplaceShifts
+        : workplaceShifts.filter((s) => s.date.startsWith(selectedMonthKey));
+    return summarizeWorkplaceShifts(inScope, workplace);
+  }, [workplaceShifts, workplace, summaryScope, selectedMonthKey]);
 
   const isWeekOpen = (weekNumber: number, index: number) =>
     openWeeks[`${month.monthKey}:${weekNumber}`] ?? index === 0;
@@ -108,7 +119,10 @@ export const WorkplaceWorkLogScreen: React.FC<WorkplaceWorkLogScreenProps> = ({
 
         <WorkplaceSummaryCard
           workplace={workplace}
-          month={month}
+          monthLabel={month.monthLabel}
+          stats={stats}
+          scope={summaryScope}
+          onScopeChange={setSummaryScope}
           onPreviousMonth={() => setSelectedMonthKey(shiftMonthKey(selectedMonthKey, -1))}
           onNextMonth={() => setSelectedMonthKey(shiftMonthKey(selectedMonthKey, 1))}
           onEdit={onEditWorkplace ? () => onEditWorkplace(workplace) : undefined}
