@@ -1,5 +1,11 @@
 import { shift, workplace } from '@/__fixtures__/shifts';
-import { buildShareText, buildTimesheetHtml, groupShiftsByWeek } from './timesheet';
+import {
+  buildShareText,
+  buildTimesheetHtml,
+  formatLongRange,
+  formatTotalDuration,
+  groupShiftsByWeek,
+} from './timesheet';
 
 // 2026-09-07 is a Monday
 const shifts = [
@@ -44,6 +50,25 @@ describe('buildShareText', () => {
   });
 });
 
+describe('formatTotalDuration', () => {
+  it('always shows hours and two-digit minutes', () => {
+    expect(formatTotalDuration(600)).toBe('10h 00m');
+    expect(formatTotalDuration(390)).toBe('6h 30m');
+    expect(formatTotalDuration(5)).toBe('0h 05m');
+    expect(formatTotalDuration(0)).toBe('0h 00m');
+  });
+});
+
+describe('formatLongRange', () => {
+  it('writes the range with the year', () => {
+    expect(formatLongRange('2026-09-14', '2026-09-27')).toBe('Sep 14 – Sep 27, 2026');
+  });
+
+  it('shows both years when the range crosses New Year', () => {
+    expect(formatLongRange('2026-12-28', '2027-01-10')).toBe('Dec 28, 2026 – Jan 10, 2027');
+  });
+});
+
 describe('buildTimesheetHtml', () => {
   const base = {
     user: { id: 'u', name: 'Alex <b>', email: 'a@b.c' },
@@ -53,14 +78,43 @@ describe('buildTimesheetHtml', () => {
     shifts,
     weekStartsOn: 'monday' as const,
     showWorkplace: false,
+    generatedOn: '2026-09-20',
   };
 
-  it('has hours and signature lines but no pay figures', () => {
+  it('has the title, the people and period, hours and signature lines but no pay figures', () => {
     const html = buildTimesheetHtml(base);
+    expect(html).toContain('SHIFTMATE');
     expect(html).toContain('TIMESHEET');
-    expect(html).toContain('Total Worked Time');
+    expect(html).not.toContain('OFFICIAL WORK RECORD');
+    expect(html).toContain('Employee');
+    expect(html).toContain('Total worked time');
     expect(html).toContain('Employee Signature');
+    expect(html).toContain('Supervisor / Manager');
     expect(html).not.toMatch(/earning|\brate\b|estimated/i);
+  });
+
+  it('shows the pay period with its year when the dates are given, else the label', () => {
+    expect(buildTimesheetHtml({ ...base, rangeStart: '2026-09-14', rangeEnd: '2026-09-27' })).toContain(
+      'Sep 14 – Sep 27, 2026',
+    );
+    expect(buildTimesheetHtml(base)).toContain('September 2026');
+  });
+
+  it('gives every week its own numbered heading, table and total', () => {
+    const html = buildTimesheetHtml(base);
+    expect(html).toContain('Week 1');
+    expect(html).toContain('Week 2');
+    expect(html).toContain('Sep 7 – Sep 13');
+    expect(html.match(/<table>/g)).toHaveLength(2);
+    expect(html.match(/Week total/g)).toHaveLength(2);
+    expect(html).toContain('6h 30m'); // week 1 total
+    expect(html).toContain('11h 30m'); // grand total
+  });
+
+  it('never renders a week as a table row', () => {
+    const html = buildTimesheetHtml(base);
+    expect(html).not.toContain('class="week"><td');
+    expect(html).toContain('<div class="week-head">');
   });
 
   it('escapes user-provided text', () => {
@@ -77,5 +131,33 @@ describe('buildTimesheetHtml', () => {
   it('uses the given clock format', () => {
     const html = buildTimesheetHtml({ ...base, formatTimeValue: (t) => `[${t}]` });
     expect(html).toContain('[10:00]');
+  });
+
+  describe('estimated pay', () => {
+    const withPay = {
+      ...base,
+      includeEstimatedPay: true,
+      formatMoney: (n: number) => `$${n.toFixed(2)}`,
+    };
+
+    it('is shown only when asked for', () => {
+      // 11.5 hours at the fixture workplace's 20 per hour
+      expect(buildTimesheetHtml(withPay)).toContain('$230.00');
+      expect(buildTimesheetHtml(withPay)).toContain('Estimated pay');
+      expect(buildTimesheetHtml(base)).not.toContain('$230.00');
+    });
+
+    it('is left out when there is no rate to work it out from', () => {
+      const html = buildTimesheetHtml({
+        ...withPay,
+        workplaces: [workplace({ hourlyRate: undefined })],
+        shifts: shifts.map((s) => ({ ...s, hourlyRate: undefined })),
+      });
+      expect(html).not.toContain('Estimated pay');
+    });
+
+    it('needs a money formatter', () => {
+      expect(buildTimesheetHtml({ ...base, includeEstimatedPay: true })).not.toContain('Estimated pay');
+    });
   });
 });

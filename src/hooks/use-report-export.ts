@@ -86,6 +86,8 @@ export function useReportExport({
       workplaces,
       workplaceName: workplace?.name || 'All Workplaces',
       rangeLabel: range.label,
+      rangeStart: range.start,
+      rangeEnd: range.end,
       shifts,
       weekStartsOn,
       showWorkplace: workplace === null,
