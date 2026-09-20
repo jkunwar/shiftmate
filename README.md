@@ -39,6 +39,30 @@ Without these the app runs in local-only mode with demo data and no sign-in.
    - Redirect URLs: `shiftmate://auth-callback` and, for Expo Go, `exp://**`
 3. Authentication → Providers → Email: choose whether "Confirm email" is required.
 
+### Crash reporting (Sentry)
+
+Without a DSN the app only logs errors to the console. The Sentry plugin is always part of the
+build, though, so an Android build needs step 3 (credentials, or turning the upload off) even
+without a DSN.
+
+1. In Sentry, create a project of type **React Native** and copy its **DSN**.
+2. Set `EXPO_PUBLIC_SENTRY_DSN` to it. Locally that is `.env`; for EAS builds add it to the
+   `preview` and `production` environments as plain text
+   (`eas env:create --environment production --name EXPO_PUBLIC_SENTRY_DSN --value "<dsn>" --visibility plaintext`).
+3. Release builds upload source maps to Sentry, which needs credentials. **On Android a missing or
+   wrong credential makes the build fail** at the Sentry upload step, so provide all three
+   (Sentry → Settings → Auth Tokens creates the token):
+   - `SENTRY_AUTH_TOKEN`: as a **sensitive** EAS environment variable, never in the repo
+   - `SENTRY_ORG` and `SENTRY_PROJECT`: your organization and project slugs (plain text)
+
+   To build without uploading (reports still arrive, but their stack traces are hard to read),
+   set `SENTRY_DISABLE_AUTO_UPLOAD=true` in that EAS environment instead.
+
+Reports are sent only from release builds (not while developing) and carry the error, where it
+happened and an anonymous account id. No emails, names, IP addresses, console output or
+screenshots. `src/lib/error-reporting.ts` is the one place this is configured. Sentry includes
+native code, so it needs a new development or release build to take effect.
+
 ### Development build
 
 Expo Go is enough for most work, but reminders (`expo-notifications`) need a development build on Android:

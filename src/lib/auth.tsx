@@ -6,6 +6,7 @@ import { AppState } from 'react-native';
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase';
 import { cancelAllReminders } from '@/lib/notifications';
 import { clearStoredAccountData } from '@/lib/storage';
+import { setErrorReportingUser } from '@/lib/error-reporting';
 
 /** `error` is a user-facing message, or null on success. */
 export interface AuthResult {
@@ -119,6 +120,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       appStateSub.remove();
     };
   }, []);
+
+  // Crash reports are tied to the anonymous account id only, never an email or name
+  const userId = session?.user.id ?? null;
+  useEffect(() => setErrorReportingUser(userId), [userId]);
 
   // Email links (confirm sign-up, reset password) reopen the app as `auth-callback` URLs carrying
   // session tokens. Each URL is consumed once because the tokens are single-use.
