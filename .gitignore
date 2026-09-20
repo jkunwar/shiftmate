@@ -42,3 +42,6 @@ example
 # generated native folders
 /ios
 /android
+
+# Local sample output (e.g. generated timesheet PDFs)
+/samples/
